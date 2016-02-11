@@ -1,0 +1,11 @@
+*.o
+*.so
+*.dll
+*.a
+.Rproj.user
+.Rhistory
+inst
+src/pdfimages
+src/pdfinfo
+src/pdftotext
+src/pdftops

@@ -1,0 +1,60 @@
+PKG_CPPFLAGS=-I. -Ifofi -Igoo -Isplash -Ixpdf
+PKG_CXXFLAGS=-DHAVE_CONFIG_H
+PKG_LIBS=-L. -lxpdf -lgoo -lfofi -lgoo -lsplash -lm
+
+LIBXPDF= xpdf/AcroForm.o xpdf/Annot.o xpdf/Array.o xpdf/BuiltinFont.o xpdf/BuiltinFontTables.o \
+	xpdf/Catalog.o xpdf/CharCodeToUnicode.o xpdf/CMap.o xpdf/Decrypt.o xpdf/Dict.o xpdf/Error.o \
+	xpdf/FontEncodingTables.o xpdf/Form.o xpdf/Function.o xpdf/Gfx.o xpdf/GfxFont.o xpdf/GfxState.o \
+	xpdf/GlobalParams.o xpdf/ImageOutputDev.o xpdf/JArithmeticDecoder.o xpdf/JBIG2Stream.o \
+	xpdf/JPXStream.o xpdf/Lexer.o xpdf/Link.o xpdf/NameToCharCode.o xpdf/Object.o xpdf/OptionalContent.o \
+	xpdf/Outline.o xpdf/OutputDev.o xpdf/Page.o xpdf/Parser.o xpdf/PDFDoc.o xpdf/PDFDocEncoding.o \
+	xpdf/PreScanOutputDev.o xpdf/PSOutputDev.o xpdf/PSTokenizer.o xpdf/SecurityHandler.o \
+	xpdf/SplashOutputDev.o xpdf/Stream.o xpdf/TextOutputDev.o xpdf/TextString.o xpdf/UnicodeMap.o \
+	xpdf/UnicodeTypeTable.o xpdf/XFAForm.o xpdf/XpdfPluginAPI.o xpdf/XRef.o xpdf/Zoox.o
+
+LIBGOO= goo/GHash.o goo/GList.o goo/GString.o goo/gmem.o \
+	goo/gfile.o goo/parseargs.o
+
+LIBFOFI= fofi/FoFiBase.o fofi/FoFiEncodings.o fofi/FoFiIdentifier.o \
+	fofi/FoFiTrueType.o fofi/FoFiType1.o fofi/FoFiType1C.o
+
+LIBSPLASH= splash/Splash.o splash/SplashBitmap.o splash/SplashClip.o \
+	splash/SplashFont.o splash/SplashFontEngine.o splash/SplashFontFile.o \
+	splash/SplashFontFileID.o splash/SplashPath.o splash/SplashPattern.o \
+	splash/SplashScreen.o splash/SplashState.o splash/SplashXPath.o \
+	splash/SplashXPathScanner.o
+
+all: executables
+
+executables: pdftotext pdfinfo pdftops pdfimages
+	mkdir -p ../inst/bin
+	cp -f pdftotext pdfinfo pdftops pdfimages ../inst/bin
+
+clean:
+	rm -f *.a *.so *.o fofi/*.o goo/*.o splash/*.o xpdf/*.o
+
+libfofi.a: $(LIBFOFI:.cc=.o)
+	$(AR) rcs libfofi.a fofi/*.o
+
+libgoo.a: $(LIBGOO)
+	$(AR) rcs libgoo.a goo/*.o
+
+libsplash.a: $(LIBSPLASH:.cc=.o)
+	$(AR) rcs libsplash.a splash/*.o
+
+libxpdf.a: $(LIBXPDF)
+	$(AR) rcs libxpdf.a $(LIBXPDF)
+
+STATIC_LIBS = libfofi.a libgoo.a libsplash.a libxpdf.a
+
+pdftotext: $(STATIC_LIBS) xpdf/pdftotext.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdftotext xpdf/pdftotext.o $(PKG_LIBS)
+
+pdfinfo: $(STATIC_LIBS) xpdf/pdfinfo.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdfinfo xpdf/pdfinfo.o $(PKG_LIBS)
+
+pdftops: $(STATIC_LIBS) xpdf/pdftops.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdftops xpdf/pdftops.o $(PKG_LIBS)
+
+pdfimages: $(STATIC_LIBS) xpdf/pdfimages.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdfimages xpdf/pdfimages.o $(PKG_LIBS)
