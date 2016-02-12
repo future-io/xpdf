@@ -5,6 +5,7 @@
 #' @export
 #' @useDynLib xpdf
 #' @rdname xpdf
+#' @aliases xpdf
 #' @importFrom Rcpp sourceCpp
 #' @param input pdf path or filename
 #' @param output txt path or filename

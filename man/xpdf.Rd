@@ -3,6 +3,7 @@
 \name{pdftotext}
 \alias{pdfinfo}
 \alias{pdftotext}
+\alias{xpdf}
 \alias{xpdf_version}
 \title{Extract text from PDF file}
 \usage{
