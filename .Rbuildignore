@@ -5,3 +5,4 @@
 ^src/pdfinfo$
 ^src/pdftotext$
 ^src/pdftops$
+^src/pdftohtml$

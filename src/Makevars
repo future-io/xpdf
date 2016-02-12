@@ -1,6 +1,6 @@
-PKG_CPPFLAGS=-I. -Ifofi -Igoo -Isplash -Ixpdf
+PKG_CPPFLAGS=-I. -Ifofi -Igoo -Isplash -Ixpdf ## -I/usr/local/opt/libpng/include
 PKG_CXXFLAGS=-DHAVE_CONFIG_H
-PKG_LIBS=-L. -lxpdf -lgoo -lfofi -lgoo -lsplash -lm
+PKG_LIBS=-L. -lxpdf -lgoo -lfofi -lgoo -lsplash -lm ## -L/usr/local/opt/libpng/lib -lpng
 
 LIBXPDF= xpdf/AcroForm.o xpdf/Annot.o xpdf/Array.o xpdf/BuiltinFont.o xpdf/BuiltinFontTables.o \
 	xpdf/Catalog.o xpdf/CharCodeToUnicode.o xpdf/CMap.o xpdf/Decrypt.o xpdf/Dict.o xpdf/Error.o \
@@ -10,7 +10,7 @@ LIBXPDF= xpdf/AcroForm.o xpdf/Annot.o xpdf/Array.o xpdf/BuiltinFont.o xpdf/Built
 	xpdf/Outline.o xpdf/OutputDev.o xpdf/Page.o xpdf/Parser.o xpdf/PDFDoc.o xpdf/PDFDocEncoding.o \
 	xpdf/PreScanOutputDev.o xpdf/PSOutputDev.o xpdf/PSTokenizer.o xpdf/SecurityHandler.o \
 	xpdf/SplashOutputDev.o xpdf/Stream.o xpdf/TextOutputDev.o xpdf/TextString.o xpdf/UnicodeMap.o \
-	xpdf/UnicodeTypeTable.o xpdf/XFAForm.o xpdf/XpdfPluginAPI.o xpdf/XRef.o xpdf/Zoox.o
+	xpdf/UnicodeTypeTable.o xpdf/XFAForm.o xpdf/XpdfPluginAPI.o xpdf/XRef.o xpdf/Zoox.o ## xpdf/HTMLGen.o
 
 LIBGOO= goo/GHash.o goo/GList.o goo/GString.o goo/gmem.o \
 	goo/gfile.o goo/parseargs.o
@@ -58,3 +58,6 @@ pdftops: $(STATIC_LIBS) xpdf/pdftops.o
 
 pdfimages: $(STATIC_LIBS) xpdf/pdfimages.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdfimages xpdf/pdfimages.o $(PKG_LIBS)
+
+pdftohtml: $(STATIC_LIBS) xpdf/pdftohtml.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdftohtml xpdf/pdftohtml.o $(PKG_LIBS)

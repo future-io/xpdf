@@ -5,6 +5,21 @@
 
 using namespace Rcpp;
 
+// wrap_pdfinfo
+List wrap_pdfinfo(std::string R_input, std::string R_enc, std::string R_opw, std::string R_upw, std::string R_config);
+RcppExport SEXP xpdf_wrap_pdfinfo(SEXP R_inputSEXP, SEXP R_encSEXP, SEXP R_opwSEXP, SEXP R_upwSEXP, SEXP R_configSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject __result;
+    Rcpp::RNGScope __rngScope;
+    Rcpp::traits::input_parameter< std::string >::type R_input(R_inputSEXP);
+    Rcpp::traits::input_parameter< std::string >::type R_enc(R_encSEXP);
+    Rcpp::traits::input_parameter< std::string >::type R_opw(R_opwSEXP);
+    Rcpp::traits::input_parameter< std::string >::type R_upw(R_upwSEXP);
+    Rcpp::traits::input_parameter< std::string >::type R_config(R_configSEXP);
+    __result = Rcpp::wrap(wrap_pdfinfo(R_input, R_enc, R_opw, R_upw, R_config));
+    return __result;
+END_RCPP
+}
 // wrap_version
 std::string wrap_version();
 RcppExport SEXP xpdf_wrap_version() {

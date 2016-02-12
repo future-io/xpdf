@@ -58,7 +58,7 @@ std::string wrap_pdftotext(std::string R_input, std::string R_output, int firstP
   }
   if (textEOL[0]) {
     if (!globalParams->setTextEOL(textEOL)) {
-      Rf_error("Bad '-eol' value on command line\n");
+      throw std::invalid_argument("Bad 'eol' argument value");
     }
   }
   if (noPageBreaks) {
@@ -70,7 +70,7 @@ std::string wrap_pdftotext(std::string R_input, std::string R_output, int firstP
 
   // get mapping to output encoding
   if (!(uMap = globalParams->getTextEncoding())) {
-    Rf_error("Couldn't get text encoding");
+    throw std::runtime_error("Couldn't get text encoding");
   }
 
   // open PDF file
@@ -96,9 +96,9 @@ std::string wrap_pdftotext(std::string R_input, std::string R_output, int firstP
   }
 
   // check for copy permission
-  if (!doc->okToCopy()) {
-    Rf_error("Copying of text from this document is not allowed.");
-  }
+  if (!doc->okToCopy())
+    throw std::runtime_error("Copying of text from this document is not allowed.");
+
   // get page range
   if (firstPage < 1) {
     firstPage = 1;
