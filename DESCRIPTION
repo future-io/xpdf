@@ -1,10 +1,11 @@
 Package: xpdf
 Type: Package
-Title: Wrappers for XPDF
+Title: Extract Text and Metadata from PDF Documents
 Version: 0.1
 Author: Jeroen Ooms
 Maintainer: Jeroen Ooms <jeroen.ooms@stat.ucla.edu>
-Description: XPDF stuff
+Description: Port of the 'xpdf' tools for converting PDF files to
+    to html or plain text. Useful for text mining.
 License: GPL-2
 URL: https://github.com/jeroenooms/xpdf
 BugReports: https://github.com/jeroenooms/xpdf/issues
