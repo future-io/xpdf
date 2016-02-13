@@ -92,21 +92,19 @@ std::string wrap_pdftotext(std::string R_input, std::string R_output, int firstP
   if (ownerPW) {
     delete ownerPW;
   }
-  if (!doc->isOk()) {
-    goto err2;
-  }
+  if (!doc->isOk())
+    throw std::runtime_error("PDF file is not OK");
 
   // check for copy permission
   if (!doc->okToCopy())
     throw std::runtime_error("Copying of text from this document is not allowed.");
 
   // get page range
-  if (firstPage < 1) {
+  if (firstPage < 1)
     firstPage = 1;
-  }
-  if (lastPage < 1 || lastPage > doc->getNumPages()) {
+
+  if (lastPage < 1 || lastPage > doc->getNumPages())
     lastPage = doc->getNumPages();
-  }
 
   // write text file
   if (tableLayout) {
@@ -130,20 +128,12 @@ std::string wrap_pdftotext(std::string R_input, std::string R_output, int firstP
     doc->displayPages(textOut, firstPage, lastPage, 72, 72, 0, gFalse, gTrue, gFalse);
   } else {
     delete textOut;
-    goto err3;
+    throw std::runtime_error("Text output not OK.");
   }
   delete textOut;
-
-  // clean up
-  err3:
-    delete textFileName;
-  err2:
-    delete doc;
+  delete textFileName;
+  delete doc;
   uMap->decRefCnt();
   delete globalParams;
-
-  //check for memory leaks (not allowed in R)
-  //Object::memCheck(stderr);
-  //gMemReport(stderr);
   return R_output;
 }
