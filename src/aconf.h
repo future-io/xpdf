@@ -1,14 +1,23 @@
-/* aconf.h.  Generated from aconf.h.in by configure.  */
-/*
- * aconf.h
- *
- * Copyright 2002-2003 Glyph & Cog, LLC
- */
-
 #ifndef ACONF_H
 #define ACONF_H
 
 #include <aconf2.h>
+
+#ifdef _win32
+/* #undef HAVE_STRINGS_H */
+/* #undef HAVE_MKSTEMP */
+/* #undef HAVE_MKSTEMPS */
+#define SELECT_TAKES_INT 1
+#define _FILE_OFFSET_BITS 64
+/* #undef HAVE_XTAPPSETEXITFLAG */
+#else
+#define HAVE_STRINGS_H
+#define HAVE_MKSTEMP
+#define HAVE_MKSTEMPS
+/* #undef SELECT_TAKES_INT */
+/* #undef _FILE_OFFSET_BITS */
+#define HAVE_XTAPPSETEXITFLAG
+#endif
 
 /*
  * Use A4 paper size instead of Letter for PostScript output.
@@ -59,25 +68,19 @@
 /* #undef HAVE_NDIR_H */
 /* #undef HAVE_SYS_SELECT_H */
 /* #undef HAVE_SYS_BSDTYPES_H */
-#define HAVE_STRINGS_H 1
 /* #undef HAVE_BSTRING_H */
 #define HAVE_POPEN 1
-#define HAVE_MKSTEMP 1
-#define HAVE_MKSTEMPS 1
-/* #undef SELECT_TAKES_INT */
 #define HAVE_STD_SORT 1
 #define HAVE_FSEEKO 1
 /* #undef HAVE_FSEEK64 */
 /* #undef HAVE_FSEEKI64 */
-/* #undef _FILE_OFFSET_BITS */
 /* #undef _LARGE_FILES */
 /* #undef _LARGEFILE_SOURCE */
-#define HAVE_XTAPPSETEXITFLAG 1
 
 /*
  * This is defined if using libXpm.
  */
-#define HAVE_X11_XPM_H 1
+/* #undef HAVE_X11_XPM_H */
 
 /*
  * One of these is defined if using FreeType 2.
