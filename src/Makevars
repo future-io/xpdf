@@ -31,7 +31,7 @@ executables: pdftotext pdfinfo pdftops pdfimages
 	cp -f pdftotext pdfinfo pdftops pdfimages ../inst/bin
 
 clean:
-	rm -f *.a *.so *.o fofi/*.o goo/*.o splash/*.o xpdf/*.o
+	rm -f *.dll *.a *.so *.o fofi/*.o goo/*.o splash/*.o xpdf/*.o
 
 libfofi.a: $(LIBFOFI:.cc=.o)
 	$(AR) rcs libfofi.a fofi/*.o
