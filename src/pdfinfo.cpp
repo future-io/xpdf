@@ -31,6 +31,7 @@
 #include "TextString.h"
 #include "config.h"
 
+#define STRICT_R_HEADERS
 #include <Rcpp.h>
 using namespace Rcpp;
 
@@ -133,6 +134,7 @@ List wrap_pdfinfo(std::string R_input, std::string R_enc, std::string R_opw, std
     uMap->decRefCnt();
     delete doc;
     delete globalParams;
+    throw std::runtime_error("PDF is not OK");
   }
 
   Object info;
