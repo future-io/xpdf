@@ -11,9 +11,9 @@
 #define _FILE_OFFSET_BITS 64
 /* #undef HAVE_XTAPPSETEXITFLAG */
 #else
-#define HAVE_STRINGS_H
-#define HAVE_MKSTEMP
-#define HAVE_MKSTEMPS
+#define HAVE_STRINGS_H 1
+#define HAVE_MKSTEMP 1
+#define HAVE_MKSTEMPS 1
 /* #undef SELECT_TAKES_INT */
 /* #undef _FILE_OFFSET_BITS */
 #define HAVE_XTAPPSETEXITFLAG

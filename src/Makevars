@@ -24,7 +24,7 @@ LIBSPLASH= splash/Splash.o splash/SplashBitmap.o splash/SplashClip.o \
 	splash/SplashScreen.o splash/SplashState.o splash/SplashXPath.o \
 	splash/SplashXPathScanner.o
 
-all: executables
+all: clean executables
 
 executables: pdftotext pdfinfo pdftops pdfimages
 	mkdir -p ../inst/bin
