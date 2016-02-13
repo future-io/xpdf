@@ -57,8 +57,8 @@ xpdf_version()
 An R interface to the \code{pdftotext} utility from \code{xpdf}.
 }
 \examples{
-download.file("https://cran.r-project.org/doc/manuals/r-release/R-exts.pdf", "R-exts.pdf")
-pdfinfo("R-exts.pdf")
-pdftotext("R-exts.pdf")
+download.file("http://arxiv.org/pdf/1406.4806.pdf", "1406.4806.pdf")
+pdfinfo("1406.4806.pdf")
+pdftotext("1406.4806.pdf")
 }
 

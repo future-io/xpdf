@@ -25,9 +25,9 @@
 #' @param upw user password (for encrypted files)
 #' @param quiet don't print any messages or errors
 #' @param cfg configuration file to use in place of .xpdfrc
-#' @examples download.file("https://cran.r-project.org/doc/manuals/r-release/R-exts.pdf", "R-exts.pdf")
-#' pdfinfo("R-exts.pdf")
-#' pdftotext("R-exts.pdf")
+#' @examples download.file("http://arxiv.org/pdf/1406.4806.pdf", "1406.4806.pdf")
+#' pdfinfo("1406.4806.pdf")
+#' pdftotext("1406.4806.pdf")
 pdftotext <- function(input, output = "out.txt", firstpage = 1, lastpage = 0, layout = FALSE,
   table = FALSE, lineprinter = FALSE, raw = FALSE, fixed = 0, linespacing = 0, clip = FALSE,
   enc = "", eol = "", nopgbrk = FALSE, opw = "", upw = "", quiet = FALSE, cfg = ""){
