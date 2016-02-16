@@ -1,6 +1,6 @@
 PKG_CPPFLAGS=-I. -Ipoppler -Ifofi -Igoo
 PKG_CXXFLAGS=-DHAVE_CONFIG_H -Wno-unused-private-field
-PKG_LIBS=-L. -lutils -lpoppler -lgoo -lfofi -lfontconfig
+PKG_LIBS=-L. -lutils -lpoppler -lgoo -lfofi -lfontconfig -pthread
 
 LIBGOO=goo/FixedPoint.o goo/GooTimer.o goo/PNGWriter.o goo/gmempp.o \
 	goo/GooHash.o goo/ImgWriter.o goo/TiffWriter.o goo/grandom.o \
