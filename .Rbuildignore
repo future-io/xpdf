@@ -6,3 +6,6 @@
 ^src/pdftotext$
 ^src/pdftops$
 ^src/pdftohtml$
+^src/pdffonts$
+^src/pdfunite$
+^src/pdfseparate$

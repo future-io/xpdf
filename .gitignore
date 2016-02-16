@@ -12,6 +12,6 @@ src/pdfinfo
 src/pdftotext
 src/pdftops
 src/pdftohtml
-src/pdfimages
 src/pdfunite
 src/pdfseparate
+src/pdffonts
