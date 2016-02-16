@@ -2,11 +2,9 @@
 //
 // SplashFontFileID.cc
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
-//
 //========================================================================
 
-#include <aconf.h>
+#include <config.h>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma implementation

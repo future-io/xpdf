@@ -6,19 +6,32 @@
 //
 //========================================================================
 
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2006 Takashi Iwai <tiwai@suse.de>
+// Copyright (C) 2012 Thomas Freitag <Thomas.Freitag@alfa.de>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
 #ifndef FOFITYPE1C_H
 #define FOFITYPE1C_H
-
-#include <aconf.h>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma interface
 #endif
 
-#include "gtypes.h"
+#include "goo/gtypes.h"
 #include "FoFiBase.h"
 
-class GString;
+class GooString;
 
 //------------------------------------------------------------------------
 
@@ -151,7 +164,7 @@ public:
 
   // Get the glyph names.
   int getNumGlyphs() { return nGlyphs; }
-  GString *getGlyphName(int gid);
+  GooString *getGlyphName(int gid);
 
   // Return the mapping from CIDs to GIDs, and return the number of
   // CIDs in *<nCIDs>.  This is only useful for CID fonts.
@@ -199,12 +212,12 @@ private:
 		     int offset, int nBytes,
 		     Type1CIndex *subrIdx,
 		     Type1CPrivateDict *pDict);
-  void cvtGlyph(int offset, int nBytes, GString *charBuf,
+  void cvtGlyph(int offset, int nBytes, GooString *charBuf,
 		Type1CIndex *subrIdx, Type1CPrivateDict *pDict,
 		GBool top);
-  void cvtGlyphWidth(GBool useOp, GString *charBuf,
+  void cvtGlyphWidth(GBool useOp, GooString *charBuf,
 		     Type1CPrivateDict *pDict);
-  void cvtNum(double x, GBool isFP, GString *charBuf);
+  void cvtNum(double x, GBool isFP, GooString *charBuf);
   void eexecWrite(Type1CEexecBuf *eb, const char *s);
   void eexecWriteCharstring(Type1CEexecBuf *eb, Guchar *s, int n);
   void writePSString(char *s, FoFiOutputFunc outputFunc, void *outputStream);
@@ -222,7 +235,7 @@ private:
   void getIndexVal(Type1CIndex *idx, int i, Type1CIndexVal *val, GBool *ok);
   char *getString(int sid, char *buf, GBool *ok);
 
-  GString *name;
+  GooString *name;
   char **encoding;
 
   Type1CIndex nameIdx;
@@ -238,6 +251,7 @@ private:
   int nFDs;
   Guchar *fdSelect;
   Gushort *charset;
+  Gushort charsetLength;
   int gsubrBias;
 
   GBool parsedOk;

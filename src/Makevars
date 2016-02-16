@@ -1,63 +1,75 @@
-PKG_CPPFLAGS=-I. -Ifofi -Igoo -Isplash -Ixpdf ## -I/usr/local/opt/libpng/include
-PKG_CXXFLAGS=-DHAVE_CONFIG_H
-PKG_LIBS=-L. -lxpdf -lgoo -lfofi -lgoo -lsplash -lm ## -L/usr/local/opt/libpng/lib -lpng
+PKG_CPPFLAGS=-I. -Ipoppler -Ifofi -Igoo
+PKG_CXXFLAGS=-DHAVE_CONFIG_H -Wno-unused-private-field
+PKG_LIBS=-L. -lutils -lpoppler -lgoo -lfofi -lfontconfig -lfreetype -liconv
 
-LIBXPDF= xpdf/AcroForm.o xpdf/Annot.o xpdf/Array.o xpdf/BuiltinFont.o xpdf/BuiltinFontTables.o \
-	xpdf/Catalog.o xpdf/CharCodeToUnicode.o xpdf/CMap.o xpdf/Decrypt.o xpdf/Dict.o xpdf/Error.o \
-	xpdf/FontEncodingTables.o xpdf/Form.o xpdf/Function.o xpdf/Gfx.o xpdf/GfxFont.o xpdf/GfxState.o \
-	xpdf/GlobalParams.o xpdf/ImageOutputDev.o xpdf/JArithmeticDecoder.o xpdf/JBIG2Stream.o \
-	xpdf/JPXStream.o xpdf/Lexer.o xpdf/Link.o xpdf/NameToCharCode.o xpdf/Object.o xpdf/OptionalContent.o \
-	xpdf/Outline.o xpdf/OutputDev.o xpdf/Page.o xpdf/Parser.o xpdf/PDFDoc.o xpdf/PDFDocEncoding.o \
-	xpdf/PreScanOutputDev.o xpdf/PSOutputDev.o xpdf/PSTokenizer.o xpdf/SecurityHandler.o \
-	xpdf/SplashOutputDev.o xpdf/Stream.o xpdf/TextOutputDev.o xpdf/TextString.o xpdf/UnicodeMap.o \
-	xpdf/UnicodeTypeTable.o xpdf/XFAForm.o xpdf/XpdfPluginAPI.o xpdf/XRef.o xpdf/Zoox.o ## xpdf/HTMLGen.o
+LIBGOO=goo/FixedPoint.o goo/GooTimer.o goo/PNGWriter.o goo/gmempp.o \
+	goo/GooHash.o goo/ImgWriter.o goo/TiffWriter.o goo/grandom.o \
+	goo/GooList.o goo/JpegWriter.o goo/gfile.o goo/gstrtod.o \
+	goo/GooString.o goo/NetPBMWriter.o goo/gmem.o
+LIBFOFI=fofi/FoFiBase.o fofi/FoFiIdentifier.o fofi/FoFiType1.o \
+	fofi/FoFiEncodings.o fofi/FoFiTrueType.o fofi/FoFiType1C.o
+LIBPOPPLER=poppler/Annot.o poppler/Function.o poppler/Object.o poppler/Rendition.o \
+  poppler/Array.o poppler/Gfx.o poppler/OptionalContent.o poppler/SecurityHandler.o \
+  poppler/BuiltinFont.o poppler/GfxFont.o poppler/Outline.o poppler/Sound.o \
+  poppler/BuiltinFontTables.o	poppler/GfxState.o poppler/OutputDev.o poppler/StdinCachedFile.o \
+  poppler/CMap.o poppler/GlobalParams.o poppler/PDFDoc.o poppler/StdinPDFDocBuilder.o \
+  poppler/CachedFile.o poppler/Hints.o poppler/PDFDocEncoding.o poppler/Stream.o \
+  poppler/Catalog.o poppler/JArithmeticDecoder.o	poppler/PDFDocFactory.o poppler/StructElement.o \
+  poppler/CharCodeToUnicode.o	poppler/JBIG2Stream.o poppler/PSOutputDev.o poppler/StructTreeRoot.o \
+  poppler/DateInfo.o poppler/JPXStream.o poppler/PSTokenizer.o poppler/TextOutputDev.o \
+  poppler/Decrypt.o poppler/Lexer.o poppler/Page.o poppler/UTF.o \
+  poppler/Dict.o poppler/Linearization.o poppler/PageLabelInfo.o poppler/UnicodeMap.o \
+  poppler/Error.o poppler/Link.o poppler/PageTransition.o poppler/UnicodeTypeTable.o \
+  poppler/FileSpec.o poppler/LocalPDFDocBuilder.o	poppler/Parser.o poppler/ViewerPreferences.o \
+  poppler/FontEncodingTables.o	poppler/MarkedContentOutputDev.o	poppler/PopplerCache.o poppler/XRef.o \
+  poppler/FontInfo.o poppler/Movie.o poppler/PreScanOutputDev.o	poppler/XpdfPluginAPI.o \
+  poppler/Form.o poppler/NameToCharCode.o poppler/ProfileData.o poppler/strtok_r.o
+LIBUTILS=utils/ImageOutputDev.o utils/JSInfo.o utils/parseargs.o utils/printencodings.o \
+	utils/HtmlOutputDev.o utils/HtmlLinks.o utils/HtmlFonts.o
 
-LIBGOO= goo/GHash.o goo/GList.o goo/GString.o goo/gmem.o \
-	goo/gfile.o goo/parseargs.o
+all: executables
 
-LIBFOFI= fofi/FoFiBase.o fofi/FoFiEncodings.o fofi/FoFiIdentifier.o \
-	fofi/FoFiTrueType.o fofi/FoFiType1.o fofi/FoFiType1C.o
-
-LIBSPLASH= splash/Splash.o splash/SplashBitmap.o splash/SplashClip.o \
-	splash/SplashFont.o splash/SplashFontEngine.o splash/SplashFontFile.o \
-	splash/SplashFontFileID.o splash/SplashPath.o splash/SplashPattern.o \
-	splash/SplashScreen.o splash/SplashState.o splash/SplashXPath.o \
-	splash/SplashXPathScanner.o
-
-all: clean executables
-
-executables: pdftotext pdfinfo pdftops pdfimages
+executables: pdftotext pdfinfo pdftops pdfimages pdftohtml pdffonts pdfseparate pdfunite
 	mkdir -p ../inst/bin
-	cp -f pdftotext pdfinfo pdftops pdfimages ../inst/bin
+	cp -f pdftotext pdfinfo pdftops pdfimages pdftohtml pdffonts pdfseparate pdfunite ../inst/bin
 
 clean:
-	rm -f *.dll *.a *.so *.o fofi/*.o goo/*.o splash/*.o xpdf/*.o
+	rm -f *.dll *.a *.so *.o fofi/*.o goo/*.o poppler/*.o utils/*.o
 
-libfofi.a: $(LIBFOFI:.cc=.o)
-	$(AR) rcs libfofi.a fofi/*.o
+libfofi.a: $(LIBFOFI)
+	$(AR) rcs libfofi.a $(LIBFOFI)
 
 libgoo.a: $(LIBGOO)
-	$(AR) rcs libgoo.a goo/*.o
+	$(AR) rcs libgoo.a $(LIBGOO)
 
-libsplash.a: $(LIBSPLASH:.cc=.o)
-	$(AR) rcs libsplash.a splash/*.o
+libpoppler.a: $(LIBPOPPLER)
+	$(AR) rcs libpoppler.a $(LIBPOPPLER)
 
-libxpdf.a: $(LIBXPDF)
-	$(AR) rcs libxpdf.a $(LIBXPDF)
+libutils.a: $(LIBUTILS)
+	$(AR) rcs libutils.a $(LIBUTILS)
 
-STATIC_LIBS = libfofi.a libgoo.a libsplash.a libxpdf.a
+STATIC_LIBS=libfofi.a libgoo.a libpoppler.a libutils.a
 
-pdftotext: $(STATIC_LIBS) xpdf/pdftotext.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdftotext xpdf/pdftotext.o $(PKG_LIBS)
+pdftotext: $(STATIC_LIBS) utils/pdftotext.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o pdftotext utils/pdftotext.o $(PKG_LIBS)
 
-pdfinfo: $(STATIC_LIBS) xpdf/pdfinfo.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdfinfo xpdf/pdfinfo.o $(PKG_LIBS)
+pdfinfo: $(STATIC_LIBS) utils/pdfinfo.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o pdfinfo utils/pdfinfo.o $(PKG_LIBS)
 
-pdftops: $(STATIC_LIBS) xpdf/pdftops.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdftops xpdf/pdftops.o $(PKG_LIBS)
+pdftops: $(STATIC_LIBS) utils/pdftops.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o pdftops utils/pdftops.o $(PKG_LIBS)
 
-pdfimages: $(STATIC_LIBS) xpdf/pdfimages.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdfimages xpdf/pdfimages.o $(PKG_LIBS)
+pdftohtml: $(STATIC_LIBS) utils/pdftohtml.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o pdftohtml utils/pdftohtml.o $(PKG_LIBS)
 
-pdftohtml: $(STATIC_LIBS) xpdf/pdftohtml.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I/usr/X11/include -o pdftohtml xpdf/pdftohtml.o $(PKG_LIBS)
+pdfimages: $(STATIC_LIBS) utils/pdfimages.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o pdfimages utils/pdfimages.o $(PKG_LIBS)
+
+pdffonts: $(STATIC_LIBS) utils/pdffonts.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o pdffonts utils/pdffonts.o $(PKG_LIBS)
+
+pdfseparate: $(STATIC_LIBS) utils/pdfseparate.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o pdfseparate utils/pdfseparate.o $(PKG_LIBS)
+
+pdfunite: $(STATIC_LIBS) utils/pdfunite.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o pdfunite utils/pdfunite.o $(PKG_LIBS)

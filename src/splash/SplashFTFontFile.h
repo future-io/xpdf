@@ -2,14 +2,24 @@
 //
 // SplashFTFontFile.h
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
+//========================================================================
+
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2006 Takashi Iwai <tiwai@suse.de>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
 //
 //========================================================================
 
 #ifndef SPLASHFTFONTFILE_H
 #define SPLASHFTFONTFILE_H
-
-#include <aconf.h>
 
 #if HAVE_FREETYPE_FREETYPE_H || HAVE_FREETYPE_H
 
@@ -33,32 +43,17 @@ public:
 
   static SplashFontFile *loadType1Font(SplashFTFontEngine *engineA,
 				       SplashFontFileID *idA,
-#if LOAD_FONTS_FROM_MEM
-				       GString *fontBufA,
-#else
-				       char *fileNameA, GBool deleteFileA,
-#endif
-				       const char **encA,
-				       GBool useLightHintingA);
+				       SplashFontSrc *src, const char **encA);
   static SplashFontFile *loadCIDFont(SplashFTFontEngine *engineA,
-				     SplashFontFileID *idA,
-#if LOAD_FONTS_FROM_MEM
-				     GString *fontBufA,
-#else
-				     char *fileNameA, GBool deleteFileA,
-#endif
-				     int *codeToGIDA, int codeToGIDLenA);
+					 SplashFontFileID *idA,
+					 SplashFontSrc *src,
+					 int *codeToCIDA, int codeToGIDLenA);
   static SplashFontFile *loadTrueTypeFont(SplashFTFontEngine *engineA,
 					  SplashFontFileID *idA,
-#if LOAD_FONTS_FROM_MEM
-					  GString *fontBufA,
-#else
-					  char *fileNameA,
-					  GBool deleteFileA,
-#endif
-					  int fontNum,
+					  SplashFontSrc *src,
 					  int *codeToGIDA,
-					  int codeToGIDLenA);
+					  int codeToGIDLenA,
+					  int faceIndexA=0);
 
   virtual ~SplashFTFontFile();
 
@@ -71,21 +66,17 @@ private:
 
   SplashFTFontFile(SplashFTFontEngine *engineA,
 		   SplashFontFileID *idA,
-#if LOAD_FONTS_FROM_MEM
-		   GString *fontBufA,
-#else
-		   char *fileNameA, GBool deleteFileA,
-#endif
+		   SplashFontSrc *src,
 		   FT_Face faceA,
 		   int *codeToGIDA, int codeToGIDLenA,
-		   GBool trueTypeA, GBool useLightHintingA);
+		   GBool trueTypeA, GBool type1A);
 
   SplashFTFontEngine *engine;
   FT_Face face;
   int *codeToGID;
   int codeToGIDLen;
   GBool trueType;
-  GBool useLightHinting;
+  GBool type1;
 
   friend class SplashFTFont;
 };

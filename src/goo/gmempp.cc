@@ -8,7 +8,7 @@
 //
 //========================================================================
 
-#include <aconf.h>
+#include <config.h>
 #include "gmem.h"
 
 #ifdef DEBUG_MEM

@@ -2,18 +2,16 @@
 //
 // SplashPath.cc
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
-//
 //========================================================================
 
-#include <aconf.h>
+#include <config.h>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma implementation
 #endif
 
 #include <string.h>
-#include "gmem.h"
+#include "goo/gmem.h"
 #include "SplashErrorCodes.h"
 #include "SplashPath.h"
 
@@ -55,7 +53,6 @@ SplashPath::SplashPath(SplashPath *path) {
     memcpy(hints, path->hints, hintsLength * sizeof(SplashPathHint));
   } else {
     hints = NULL;
-    hintsLength = hintsSize = 0;
   }
 }
 

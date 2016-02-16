@@ -9,13 +9,11 @@
 #ifndef FOFIENCODINGS_H
 #define FOFIENCODINGS_H
 
-#include <aconf.h>
-
 #ifdef USE_GCC_PRAGMAS
 #pragma interface
 #endif
 
-#include "gtypes.h"
+#include "goo/gtypes.h"
 
 //------------------------------------------------------------------------
 // Type 1 and 1C font data

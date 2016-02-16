@@ -2,14 +2,10 @@
 //
 // SplashPath.h
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
-//
 //========================================================================
 
 #ifndef SPLASHPATH_H
 #define SPLASHPATH_H
-
-#include <aconf.h>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma interface
@@ -96,13 +92,13 @@ public:
 
   // Get the points on the path.
   int getLength() { return length; }
-  void getPoint(int i, SplashCoord *x, SplashCoord *y, Guchar *f)
+  void getPoint(int i, double *x, double *y, Guchar *f)
     { *x = pts[i].x; *y = pts[i].y; *f = flags[i]; }
 
   // Get the current point.
   GBool getCurPt(SplashCoord *x, SplashCoord *y);
 
-private:
+protected:
 
   SplashPath(SplashPath *path);
   void grow(int nPts);
@@ -120,6 +116,8 @@ private:
 
   friend class SplashXPath;
   friend class Splash;
+  // this is a temporary hack, until we read FreeType paths directly
+  friend class ArthurOutputDev;
 };
 
 #endif

@@ -2,6 +2,8 @@
 *.so
 *.dll
 *.a
+*.txt
+*.pdf
 .Rproj.user
 .Rhistory
 inst
@@ -10,3 +12,6 @@ src/pdfinfo
 src/pdftotext
 src/pdftops
 src/pdftohtml
+src/pdfimages
+src/pdfunite
+src/pdfseparate

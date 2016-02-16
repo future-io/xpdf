@@ -2,23 +2,34 @@
 //
 // SplashFontFile.h
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
+//========================================================================
+
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2006 Takashi Iwai <tiwai@suse.de>
+// Copyright (C) 2008, 2010 Albert Astals Cid <aacid@kde.org>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
 //
 //========================================================================
 
 #ifndef SPLASHFONTFILE_H
 #define SPLASHFONTFILE_H
 
-#include <aconf.h>
-
 #ifdef USE_GCC_PRAGMAS
 #pragma interface
 #endif
 
-#include "gtypes.h"
+#include "goo/gtypes.h"
 #include "SplashTypes.h"
 
-class GString;
+class GooString;
 class SplashFontEngine;
 class SplashFont;
 class SplashFontFileID;
@@ -26,6 +37,28 @@ class SplashFontFileID;
 //------------------------------------------------------------------------
 // SplashFontFile
 //------------------------------------------------------------------------
+
+class SplashFontSrc {
+public:
+  SplashFontSrc();
+
+  void setFile(GooString *file, GBool del);
+  void setFile(const char *file, GBool del);
+  void setBuf(char *bufA, int buflenA, GBool del);
+
+  void ref();
+  void unref();
+
+  GBool isFile;
+  GooString *fileName;
+  char *buf;
+  int bufLen;
+
+private:
+  ~SplashFontSrc();
+  int refcnt;
+  GBool deleteSrc;
+};
 
 class SplashFontFile {
 public:
@@ -46,23 +79,14 @@ public:
   // the SplashFontFile object.
   void decRefCnt();
 
+  GBool doAdjustMatrix;
+
 protected:
 
-  SplashFontFile(SplashFontFileID *idA,
-#if LOAD_FONTS_FROM_MEM
-		 GString *fontBufA
-#else
-		 char *fileNameA, GBool deleteFileA
-#endif
-		 );
+  SplashFontFile(SplashFontFileID *idA, SplashFontSrc *srcA);
 
   SplashFontFileID *id;
-#if LOAD_FONTS_FROM_MEM
-  GString *fontBuf;
-#else
-  GString *fileName;
-  GBool deleteFile;
-#endif
+  SplashFontSrc *src;
   int refCnt;
 
   friend class SplashFontEngine;

@@ -6,7 +6,22 @@
 //
 //========================================================================
 
-#include <aconf.h>
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2009, 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2012 Thomas Freitag <Thomas.Freitag@alfa.de>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
+#include <config.h>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma implementation
@@ -15,8 +30,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "gmem.h"
-#include "GString.h"
+#include "goo/gmem.h"
+#include "goo/gstrtod.h"
+#include "goo/GooString.h"
 #include "FoFiEncodings.h"
 #include "FoFiType1C.h"
 
@@ -63,6 +79,7 @@ FoFiType1C::FoFiType1C(char *fileA, int lenA, GBool freeFileDataA):
   privateDicts = NULL;
   fdSelect = NULL;
   charset = NULL;
+  charsetLength = 0;
 }
 
 FoFiType1C::~FoFiType1C() {
@@ -72,8 +89,8 @@ FoFiType1C::~FoFiType1C() {
     delete name;
   }
   if (encoding &&
-      encoding != (char **)fofiType1StandardEncoding &&
-      encoding != (char **)fofiType1ExpertEncoding) {
+      encoding != fofiType1StandardEncoding &&
+      encoding != fofiType1ExpertEncoding) {
     for (i = 0; i < 256; ++i) {
       gfree(encoding[i]);
     }
@@ -101,16 +118,18 @@ char **FoFiType1C::getEncoding() {
   return encoding;
 }
 
-GString *FoFiType1C::getGlyphName(int gid) {
+GooString *FoFiType1C::getGlyphName(int gid) {
   char buf[256];
   GBool ok;
 
   ok = gTrue;
+  if (gid < 0 || gid >= charsetLength)
+    return NULL;
   getString(charset[gid], buf, &ok);
   if (!ok) {
     return NULL;
   }
-  return new GString(buf);
+  return new GooString(buf);
 }
 
 int *FoFiType1C::getCIDToGIDMap(int *nCIDs) {
@@ -126,7 +145,7 @@ int *FoFiType1C::getCIDToGIDMap(int *nCIDs) {
   // in a CID font, the charset data is the GID-to-CID mapping, so all
   // we have to do is reverse it
   n = 0;
-  for (i = 0; i < nGlyphs; ++i) {
+  for (i = 0; i < nGlyphs && i < charsetLength; ++i) {
     if (charset[i] > n) {
       n = charset[i];
     }
@@ -170,21 +189,21 @@ void FoFiType1C::getFontMatrix(double *mat) {
   }
 }
 
-void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
-				GBool ascii, FoFiOutputFunc outputFunc,
+void FoFiType1C::convertToType1(char *psName, const char **newEncoding, GBool ascii,
+				FoFiOutputFunc outputFunc,
 				void *outputStream) {
   int psNameLen;
   Type1CEexecBuf eb;
   Type1CIndex subrIdx;
   Type1CIndexVal val;
-  GString *buf;
+  GooString *buf;
   char buf2[256];
   const char **enc;
   GBool ok;
   int i;
 
   if (psName) {
-    psNameLen = (int)strlen(psName);
+    psNameLen = strlen(psName);
   } else {
     psName = name->getCString();
     psNameLen = name->getLength();
@@ -196,7 +215,7 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
   (*outputFunc)(outputStream, psName, psNameLen);
   if (topDict.versionSID != 0) {
     getString(topDict.versionSID, buf2, &ok);
-    (*outputFunc)(outputStream, buf2, (int)strlen(buf2));
+    (*outputFunc)(outputStream, buf2, strlen(buf2));
   }
   (*outputFunc)(outputStream, "\n", 1);
   // the dictionary needs room for 12 entries: the following 9, plus
@@ -244,14 +263,14 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
   } else {
     (*outputFunc)(outputStream, "/isFixedPitch false def\n", 24);
   }
-  buf = GString::format("/ItalicAngle {0:.4g} def\n", topDict.italicAngle);
+  buf = GooString::format("/ItalicAngle {0:.4g} def\n", topDict.italicAngle);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
-  buf = GString::format("/UnderlinePosition {0:.4g} def\n",
+  buf = GooString::format("/UnderlinePosition {0:.4g} def\n",
 			topDict.underlinePosition);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
-  buf = GString::format("/UnderlineThickness {0:.4g} def\n",
+  buf = GooString::format("/UnderlineThickness {0:.4g} def\n",
 			topDict.underlineThickness);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
@@ -259,33 +278,33 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
   (*outputFunc)(outputStream, "/FontName /", 11);
   (*outputFunc)(outputStream, psName, psNameLen);
   (*outputFunc)(outputStream, " def\n", 5);
-  buf = GString::format("/PaintType {0:d} def\n", topDict.paintType);
+  buf = GooString::format("/PaintType {0:d} def\n", topDict.paintType);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
   (*outputFunc)(outputStream, "/FontType 1 def\n", 16);
-  buf = GString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] readonly def\n",
+  buf = GooString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] readonly def\n",
 			topDict.fontMatrix[0], topDict.fontMatrix[1],
 			topDict.fontMatrix[2], topDict.fontMatrix[3],
 			topDict.fontMatrix[4], topDict.fontMatrix[5]);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
-  buf = GString::format("/FontBBox [{0:.4g} {1:.4g} {2:.4g} {3:.4g}] readonly def\n",
+  buf = GooString::format("/FontBBox [{0:.4g} {1:.4g} {2:.4g} {3:.4g}] readonly def\n",
 			topDict.fontBBox[0], topDict.fontBBox[1],
 			topDict.fontBBox[2], topDict.fontBBox[3]);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
-  buf = GString::format("/StrokeWidth {0:.4g} def\n", topDict.strokeWidth);
+  buf = GooString::format("/StrokeWidth {0:.4g} def\n", topDict.strokeWidth);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
   if (topDict.uniqueID != 0) {
-    buf = GString::format("/UniqueID {0:d} def\n", topDict.uniqueID);
+    buf = GooString::format("/UniqueID {0:d} def\n", topDict.uniqueID);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
   }
 
   // write the encoding
   (*outputFunc)(outputStream, "/Encoding ", 10);
-  if (!newEncoding && encoding == (char **)fofiType1StandardEncoding) {
+  if (!newEncoding && encoding == fofiType1StandardEncoding) {
     (*outputFunc)(outputStream, "StandardEncoding def\n", 21);
   } else {
     (*outputFunc)(outputStream, "256 array\n", 10);
@@ -294,7 +313,7 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
     enc = newEncoding ? newEncoding : (const char **)encoding;
     for (i = 0; i < 256; ++i) {
       if (enc[i]) {
-	buf = GString::format("dup {0:d} /{1:s} put\n", i, enc[i]);
+	buf = GooString::format("dup {0:d} /{1:s} put\n", i, enc[i]);
 	(*outputFunc)(outputStream, buf->getCString(), buf->getLength());
 	delete buf;
       }
@@ -323,7 +342,7 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
   if (privateDicts[0].nBlueValues) {
     eexecWrite(&eb, "/BlueValues [");
     for (i = 0; i < privateDicts[0].nBlueValues; ++i) {
-      buf = GString::format("{0:s}{1:d}",
+      buf = GooString::format("{0:s}{1:d}",
 			    i > 0 ? " " : "", privateDicts[0].blueValues[i]);
       eexecWrite(&eb, buf->getCString());
       delete buf;
@@ -333,7 +352,7 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
   if (privateDicts[0].nOtherBlues) {
     eexecWrite(&eb, "/OtherBlues [");
     for (i = 0; i < privateDicts[0].nOtherBlues; ++i) {
-      buf = GString::format("{0:s}{1:d}",
+      buf = GooString::format("{0:s}{1:d}",
 			    i > 0 ? " " : "", privateDicts[0].otherBlues[i]);
       eexecWrite(&eb, buf->getCString());
       delete buf;
@@ -343,7 +362,7 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
   if (privateDicts[0].nFamilyBlues) {
     eexecWrite(&eb, "/FamilyBlues [");
     for (i = 0; i < privateDicts[0].nFamilyBlues; ++i) {
-      buf = GString::format("{0:s}{1:d}",
+      buf = GooString::format("{0:s}{1:d}",
 			    i > 0 ? " " : "", privateDicts[0].familyBlues[i]);
       eexecWrite(&eb, buf->getCString());
       delete buf;
@@ -353,7 +372,7 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
   if (privateDicts[0].nFamilyOtherBlues) {
     eexecWrite(&eb, "/FamilyOtherBlues [");
     for (i = 0; i < privateDicts[0].nFamilyOtherBlues; ++i) {
-      buf = GString::format("{0:s}{1:d}", i > 0 ? " " : "",
+      buf = GooString::format("{0:s}{1:d}", i > 0 ? " " : "",
 			    privateDicts[0].familyOtherBlues[i]);
       eexecWrite(&eb, buf->getCString());
       delete buf;
@@ -361,89 +380,71 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
     eexecWrite(&eb, "] def\n");
   }
   if (privateDicts[0].blueScale != 0.039625) {
-    buf = GString::format("/BlueScale {0:.4g} def\n",
+    buf = GooString::format("/BlueScale {0:.4g} def\n",
 			  privateDicts[0].blueScale);
     eexecWrite(&eb, buf->getCString());
     delete buf;
   }
   if (privateDicts[0].blueShift != 7) {
-    buf = GString::format("/BlueShift {0:d} def\n", privateDicts[0].blueShift);
+    buf = GooString::format("/BlueShift {0:d} def\n", privateDicts[0].blueShift);
     eexecWrite(&eb, buf->getCString());
     delete buf;
   }
   if (privateDicts[0].blueFuzz != 1) {
-    buf = GString::format("/BlueFuzz {0:d} def\n", privateDicts[0].blueFuzz);
+    buf = GooString::format("/BlueFuzz {0:d} def\n", privateDicts[0].blueFuzz);
     eexecWrite(&eb, buf->getCString());
     delete buf;
   }
   if (privateDicts[0].hasStdHW) {
-    buf = GString::format("/StdHW [{0:.4g}] def\n", privateDicts[0].stdHW);
+    buf = GooString::format("/StdHW [{0:.4g}] def\n", privateDicts[0].stdHW);
     eexecWrite(&eb, buf->getCString());
     delete buf;
   }
   if (privateDicts[0].hasStdVW) {
-    buf = GString::format("/StdVW [{0:.4g}] def\n", privateDicts[0].stdVW);
+    buf = GooString::format("/StdVW [{0:.4g}] def\n", privateDicts[0].stdVW);
     eexecWrite(&eb, buf->getCString());
     delete buf;
   }
   if (privateDicts[0].nStemSnapH) {
-    // the StemSnapH array should be unique values in ascending order --
-    // if not, just skip it
-    for (i = 1; i < privateDicts[0].nStemSnapH; ++i) {
-      if (privateDicts[0].stemSnapH[i-1] >= privateDicts[0].stemSnapH[i]) {
-	break;
-      }
+    eexecWrite(&eb, "/StemSnapH [");
+    for (i = 0; i < privateDicts[0].nStemSnapH; ++i) {
+      buf = GooString::format("{0:s}{1:.4g}",
+			    i > 0 ? " " : "", privateDicts[0].stemSnapH[i]);
+      eexecWrite(&eb, buf->getCString());
+      delete buf;
     }
-    if (i == privateDicts[0].nStemSnapH) {
-      eexecWrite(&eb, "/StemSnapH [");
-      for (i = 0; i < privateDicts[0].nStemSnapH; ++i) {
-	buf = GString::format("{0:s}{1:.4g}",
-			      i > 0 ? " " : "", privateDicts[0].stemSnapH[i]);
-	eexecWrite(&eb, buf->getCString());
-	delete buf;
-      }
-      eexecWrite(&eb, "] def\n");
-    }
+    eexecWrite(&eb, "] def\n");
   }
   if (privateDicts[0].nStemSnapV) {
-    // the StemSnapV array should be unique values in ascending order --
-    // if not, just skip it
-    for (i = 1; i < privateDicts[0].nStemSnapV; ++i) {
-      if (privateDicts[0].stemSnapV[i-1] >= privateDicts[0].stemSnapV[i]) {
-	break;
-      }
+    eexecWrite(&eb, "/StemSnapV [");
+    for (i = 0; i < privateDicts[0].nStemSnapV; ++i) {
+      buf = GooString::format("{0:s}{1:.4g}",
+			    i > 0 ? " " : "", privateDicts[0].stemSnapV[i]);
+      eexecWrite(&eb, buf->getCString());
+      delete buf;
     }
-    if (i == privateDicts[0].nStemSnapV) {
-      eexecWrite(&eb, "/StemSnapV [");
-      for (i = 0; i < privateDicts[0].nStemSnapV; ++i) {
-	buf = GString::format("{0:s}{1:.4g}",
-			      i > 0 ? " " : "", privateDicts[0].stemSnapV[i]);
-	eexecWrite(&eb, buf->getCString());
-	delete buf;
-      }
-      eexecWrite(&eb, "] def\n");
-    }
+    eexecWrite(&eb, "] def\n");
   }
   if (privateDicts[0].hasForceBold) {
-    buf = GString::format("/ForceBold {0:s} def\n",
+    buf = GooString::format("/ForceBold {0:s} def\n",
 			  privateDicts[0].forceBold ? "true" : "false");
     eexecWrite(&eb, buf->getCString());
     delete buf;
   }
   if (privateDicts[0].forceBoldThreshold != 0) {
-    buf = GString::format("/ForceBoldThreshold {0:.4g} def\n",
+    buf = GooString::format("/ForceBoldThreshold {0:.4g} def\n",
 			  privateDicts[0].forceBoldThreshold);
     eexecWrite(&eb, buf->getCString());
     delete buf;
   }
   if (privateDicts[0].languageGroup != 0) {
-    buf = GString::format("/LanguageGroup {0:d} def\n",
+    buf = GooString::format("/LanguageGroup {0:d} def\n",
 			  privateDicts[0].languageGroup);
     eexecWrite(&eb, buf->getCString());
     delete buf;
   }
   if (privateDicts[0].expansionFactor != 0.06) {
-    buf = GString::format("/ExpansionFactor {0:.4g} def\n",
+    buf = GooString::format("/ExpansionFactor {0:.4g} def\n",
 			  privateDicts[0].expansionFactor);
     eexecWrite(&eb, buf->getCString());
     delete buf;
@@ -457,14 +458,14 @@ void FoFiType1C::convertToType1(char *psName, const char **newEncoding,
   }
 
   // write the CharStrings
-  buf = GString::format("2 index /CharStrings {0:d} dict dup begin\n",
+  buf = GooString::format("2 index /CharStrings {0:d} dict dup begin\n",
 			nGlyphs);
   eexecWrite(&eb, buf->getCString());
   delete buf;
   for (i = 0; i < nGlyphs; ++i) {
     ok = gTrue;
     getIndexVal(&charStringsIdx, i, &val, &ok);
-    if (ok) {
+    if (ok && i < charsetLength) {
       getString(charset[i], buf2, &ok);
       if (ok) {
 	eexecCvtGlyph(&eb, buf2, val.pos, val.len, &subrIdx, &privateDicts[0]);
@@ -492,12 +493,12 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
 				   FoFiOutputFunc outputFunc,
 				   void *outputStream) {
   int *cidMap;
-  GString *charStrings;
+  GooString *charStrings;
   int *charStringOffsets;
   Type1CIndex subrIdx;
   Type1CIndexVal val;
   int nCIDs, gdBytes;
-  GString *buf;
+  GooString *buf;
   char buf2[256];
   GBool ok;
   int gid, offset, n, i, j, k;
@@ -515,7 +516,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
     }
   } else if (topDict.firstOp == 0x0c1e) {
     nCIDs = 0;
-    for (i = 0; i < nGlyphs; ++i) {
+    for (i = 0; i < nGlyphs && i < charsetLength; ++i) {
       if (charset[i] >= nCIDs) {
 	nCIDs = charset[i] + 1;
       }
@@ -524,7 +525,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
     for (i = 0; i < nCIDs; ++i) {
       cidMap[i] = -1;
     }
-    for (i = 0; i < nGlyphs; ++i) {
+    for (i = 0; i < nGlyphs && i < charsetLength; ++i) {
       cidMap[charset[i]] = i;
     }
   } else {
@@ -536,7 +537,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
   }
 
   // build the charstrings
-  charStrings = new GString();
+  charStrings = new GooString();
   charStringOffsets = (int *)gmallocn(nCIDs + 1, sizeof(int));
   for (i = 0; i < nCIDs; ++i) {
     charStringOffsets[i] = charStrings->getLength();
@@ -575,7 +576,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
   (*outputFunc)(outputStream, "/CIDInit /ProcSet findresource begin\n", 37);
   (*outputFunc)(outputStream, "20 dict begin\n", 14);
   (*outputFunc)(outputStream, "/CIDFontName /", 14);
-  (*outputFunc)(outputStream, psName, (int)strlen(psName));
+  (*outputFunc)(outputStream, psName, strlen(psName));
   (*outputFunc)(outputStream, " def\n", 5);
   (*outputFunc)(outputStream, "/CIDFontType 0 def\n", 19);
   (*outputFunc)(outputStream, "/CIDSystemInfo 3 dict dup begin\n", 32);
@@ -584,26 +585,26 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
     getString(topDict.registrySID, buf2, &ok);
     if (ok) {
       (*outputFunc)(outputStream, "  /Registry (", 13);
-      (*outputFunc)(outputStream, buf2, (int)strlen(buf2));
+      (*outputFunc)(outputStream, buf2, strlen(buf2));
       (*outputFunc)(outputStream, ") def\n", 6);
     }
     ok = gTrue;
     getString(topDict.orderingSID, buf2, &ok);
     if (ok) {
       (*outputFunc)(outputStream, "  /Ordering (", 13);
-      (*outputFunc)(outputStream, buf2, (int)strlen(buf2));
+      (*outputFunc)(outputStream, buf2, strlen(buf2));
       (*outputFunc)(outputStream, ") def\n", 6);
     }
   } else {
     (*outputFunc)(outputStream, "  /Registry (Adobe) def\n", 24);
     (*outputFunc)(outputStream, "  /Ordering (Identity) def\n", 27);
   }
-  buf = GString::format("  /Supplement {0:d} def\n", topDict.supplement);
+  buf = GooString::format("  /Supplement {0:d} def\n", topDict.supplement);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
   (*outputFunc)(outputStream, "end def\n", 8);
   if (topDict.hasFontMatrix) {
-    buf = GString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] def\n",
+    buf = GooString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] def\n",
 			  topDict.fontMatrix[0], topDict.fontMatrix[1],
 			  topDict.fontMatrix[2], topDict.fontMatrix[3],
 			  topDict.fontMatrix[4], topDict.fontMatrix[5]);
@@ -615,7 +616,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
     (*outputFunc)(outputStream,
 		  "/FontMatrix [0.001 0 0 0.001 0 0] def\n", 38);
   }
-  buf = GString::format("/FontBBox [{0:.4g} {1:.4g} {2:.4g} {3:.4g}] def\n",
+  buf = GooString::format("/FontBBox [{0:.4g} {1:.4g} {2:.4g} {3:.4g}] def\n",
 			topDict.fontBBox[0], topDict.fontBBox[1],
 			topDict.fontBBox[2], topDict.fontBBox[3]);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
@@ -625,34 +626,34 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
   (*outputFunc)(outputStream, "end def\n", 8);
 
   // CIDFont-specific entries
-  buf = GString::format("/CIDCount {0:d} def\n", nCIDs);
+  buf = GooString::format("/CIDCount {0:d} def\n", nCIDs);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
   (*outputFunc)(outputStream, "/FDBytes 1 def\n", 15);
-  buf = GString::format("/GDBytes {0:d} def\n", gdBytes);
+  buf = GooString::format("/GDBytes {0:d} def\n", gdBytes);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
   (*outputFunc)(outputStream, "/CIDMapOffset 0 def\n", 20);
   if (topDict.paintType != 0) {
-    buf = GString::format("/PaintType {0:d} def\n", topDict.paintType);
+    buf = GooString::format("/PaintType {0:d} def\n", topDict.paintType);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
-    buf = GString::format("/StrokeWidth {0:.4g} def\n", topDict.strokeWidth);
+    buf = GooString::format("/StrokeWidth {0:.4g} def\n", topDict.strokeWidth);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
   }
 
   // FDArray entry
-  buf = GString::format("/FDArray {0:d} array\n", nFDs);
+  buf = GooString::format("/FDArray {0:d} array\n", nFDs);
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
   for (i = 0; i < nFDs; ++i) {
-    buf = GString::format("dup {0:d} 10 dict begin\n", i);
+    buf = GooString::format("dup {0:d} 10 dict begin\n", i);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
     (*outputFunc)(outputStream, "/FontType 1 def\n", 16);
     if (privateDicts[i].hasFontMatrix) {
-      buf = GString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] def\n",
+      buf = GooString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] def\n",
 			    privateDicts[i].fontMatrix[0],
 			    privateDicts[i].fontMatrix[1],
 			    privateDicts[i].fontMatrix[2],
@@ -664,14 +665,14 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
     } else {
       (*outputFunc)(outputStream, "/FontMatrix [1 0 0 1 0 0] def\n", 30);
     }
-    buf = GString::format("/PaintType {0:d} def\n", topDict.paintType);
+    buf = GooString::format("/PaintType {0:d} def\n", topDict.paintType);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
     (*outputFunc)(outputStream, "/Private 32 dict begin\n", 23);
     if (privateDicts[i].nBlueValues) {
       (*outputFunc)(outputStream, "/BlueValues [", 13);
       for (j = 0; j < privateDicts[i].nBlueValues; ++j) {
-	buf = GString::format("{0:s}{1:d}",
+	buf = GooString::format("{0:s}{1:d}",
 			      j > 0 ? " " : "", privateDicts[i].blueValues[j]);
 	(*outputFunc)(outputStream, buf->getCString(), buf->getLength());
 	delete buf;
@@ -681,7 +682,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
     if (privateDicts[i].nOtherBlues) {
       (*outputFunc)(outputStream, "/OtherBlues [", 13);
       for (j = 0; j < privateDicts[i].nOtherBlues; ++j) {
-	buf = GString::format("{0:s}{1:d}",
+	buf = GooString::format("{0:s}{1:d}",
 			      j > 0 ? " " : "", privateDicts[i].otherBlues[j]);
 	(*outputFunc)(outputStream, buf->getCString(), buf->getLength());
 	delete buf;
@@ -691,7 +692,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
     if (privateDicts[i].nFamilyBlues) {
       (*outputFunc)(outputStream, "/FamilyBlues [", 14);
       for (j = 0; j < privateDicts[i].nFamilyBlues; ++j) {
-	buf = GString::format("{0:s}{1:d}",
+	buf = GooString::format("{0:s}{1:d}",
 			      j > 0 ? " " : "",
 			      privateDicts[i].familyBlues[j]);
 	(*outputFunc)(outputStream, buf->getCString(), buf->getLength());
@@ -702,7 +703,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
     if (privateDicts[i].nFamilyOtherBlues) {
       (*outputFunc)(outputStream, "/FamilyOtherBlues [", 19);
       for (j = 0; j < privateDicts[i].nFamilyOtherBlues; ++j) {
-	buf = GString::format("{0:s}{1:d}", j > 0 ? " " : "",
+	buf = GooString::format("{0:s}{1:d}", j > 0 ? " " : "",
 			      privateDicts[i].familyOtherBlues[j]);
 	(*outputFunc)(outputStream, buf->getCString(), buf->getLength());
 	delete buf;
@@ -710,90 +711,72 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
       (*outputFunc)(outputStream, "] def\n", 6);
     }
     if (privateDicts[i].blueScale != 0.039625) {
-      buf = GString::format("/BlueScale {0:.4g} def\n",
+      buf = GooString::format("/BlueScale {0:.4g} def\n",
 			    privateDicts[i].blueScale);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (privateDicts[i].blueShift != 7) {
-      buf = GString::format("/BlueShift {0:d} def\n",
+      buf = GooString::format("/BlueShift {0:d} def\n",
 			    privateDicts[i].blueShift);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (privateDicts[i].blueFuzz != 1) {
-      buf = GString::format("/BlueFuzz {0:d} def\n", privateDicts[i].blueFuzz);
+      buf = GooString::format("/BlueFuzz {0:d} def\n", privateDicts[i].blueFuzz);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (privateDicts[i].hasStdHW) {
-      buf = GString::format("/StdHW [{0:.4g}] def\n", privateDicts[i].stdHW);
+      buf = GooString::format("/StdHW [{0:.4g}] def\n", privateDicts[i].stdHW);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (privateDicts[i].hasStdVW) {
-      buf = GString::format("/StdVW [{0:.4g}] def\n", privateDicts[i].stdVW);
+      buf = GooString::format("/StdVW [{0:.4g}] def\n", privateDicts[i].stdVW);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (privateDicts[i].nStemSnapH) {
-      // the StemSnapH array should be unique values in ascending order --
-      // if not, just skip it
-      for (j = 1; j < privateDicts[i].nStemSnapH; ++j) {
-	if (privateDicts[i].stemSnapH[j-1] >= privateDicts[i].stemSnapH[j]) {
-	  break;
-	}
+      (*outputFunc)(outputStream, "/StemSnapH [", 12);
+      for (j = 0; j < privateDicts[i].nStemSnapH; ++j) {
+	buf = GooString::format("{0:s}{1:.4g}",
+			      j > 0 ? " " : "", privateDicts[i].stemSnapH[j]);
+	(*outputFunc)(outputStream, buf->getCString(), buf->getLength());
+	delete buf;
       }
-      if (j == privateDicts[0].nStemSnapH) {
-	(*outputFunc)(outputStream, "/StemSnapH [", 12);
-	for (j = 0; j < privateDicts[i].nStemSnapH; ++j) {
-	  buf = GString::format("{0:s}{1:.4g}",
-				j > 0 ? " " : "", privateDicts[i].stemSnapH[j]);
-	  (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
-	  delete buf;
-	}
-	(*outputFunc)(outputStream, "] def\n", 6);
-      }
+      (*outputFunc)(outputStream, "] def\n", 6);
     }
     if (privateDicts[i].nStemSnapV) {
-      // the StemSnapV array should be unique values in ascending order --
-      // if not, just skip it
-      for (j = 1; j < privateDicts[i].nStemSnapV; ++j) {
-	if (privateDicts[i].stemSnapV[j-1] >= privateDicts[i].stemSnapV[j]) {
-	  break;
-	}
+      (*outputFunc)(outputStream, "/StemSnapV [", 12);
+      for (j = 0; j < privateDicts[i].nStemSnapV; ++j) {
+	buf = GooString::format("{0:s}{1:.4g}",
+			      j > 0 ? " " : "", privateDicts[i].stemSnapV[j]);
+	(*outputFunc)(outputStream, buf->getCString(), buf->getLength());
+	delete buf;
       }
-      if (j == privateDicts[0].nStemSnapV) {
-	(*outputFunc)(outputStream, "/StemSnapV [", 12);
-	for (j = 0; j < privateDicts[i].nStemSnapV; ++j) {
-	  buf = GString::format("{0:s}{1:.4g}",
-				j > 0 ? " " : "", privateDicts[i].stemSnapV[j]);
-	  (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
-	  delete buf;
-	}
-	(*outputFunc)(outputStream, "] def\n", 6);
-      }
+      (*outputFunc)(outputStream, "] def\n", 6);
     }
     if (privateDicts[i].hasForceBold) {
-      buf = GString::format("/ForceBold {0:s} def\n",
+      buf = GooString::format("/ForceBold {0:s} def\n",
 			    privateDicts[i].forceBold ? "true" : "false");
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (privateDicts[i].forceBoldThreshold != 0) {
-      buf = GString::format("/ForceBoldThreshold {0:.4g} def\n",
+      buf = GooString::format("/ForceBoldThreshold {0:.4g} def\n",
 			    privateDicts[i].forceBoldThreshold);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (privateDicts[i].languageGroup != 0) {
-      buf = GString::format("/LanguageGroup {0:d} def\n",
+      buf = GooString::format("/LanguageGroup {0:d} def\n",
 			    privateDicts[i].languageGroup);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (privateDicts[i].expansionFactor != 0.06) {
-      buf = GString::format("/ExpansionFactor {0:.4g} def\n",
+      buf = GooString::format("/ExpansionFactor {0:.4g} def\n",
 			    privateDicts[i].expansionFactor);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
@@ -805,7 +788,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
 
   // start the binary section
   offset = (nCIDs + 1) * (1 + gdBytes);
-  buf = GString::format("(Hex) {0:d} StartData\n",
+  buf = GooString::format("(Hex) {0:d} StartData\n",
 			offset + charStrings->getLength());
   (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
   delete buf;
@@ -824,7 +807,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
 	n >>= 8;
       }
       for (k = 0; k <= gdBytes; ++k) {
-	buf = GString::format("{0:02x}", buf2[k] & 0xff);
+	buf = GooString::format("{0:02x}", buf2[k] & 0xff);
 	(*outputFunc)(outputStream, buf->getCString(), buf->getLength());
 	delete buf;
       }
@@ -836,7 +819,7 @@ void FoFiType1C::convertToCIDType0(char *psName, int *codeMap, int nCodes,
   n = charStrings->getLength();
   for (i = 0; i < n; i += 32) {
     for (j = 0; j < 32 && i+j < n; ++j) {
-      buf = GString::format("{0:02x}", charStrings->getChar(i+j) & 0xff);
+      buf = GooString::format("{0:02x}", charStrings->getChar(i+j) & 0xff);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
@@ -858,7 +841,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
   Type1CIndex subrIdx;
   Type1CIndexVal val;
   int nCIDs;
-  GString *buf;
+  GooString *buf;
   Type1CEexecBuf eb;
   GBool ok;
   int fd, i, j, k;
@@ -876,7 +859,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
     }
   } else if (topDict.firstOp == 0x0c1e) {
     nCIDs = 0;
-    for (i = 0; i < nGlyphs; ++i) {
+    for (i = 0; i < nGlyphs && i < charsetLength; ++i) {
       if (charset[i] >= nCIDs) {
 	nCIDs = charset[i] + 1;
       }
@@ -885,7 +868,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
     for (i = 0; i < nCIDs; ++i) {
       cidMap[i] = -1;
     }
-    for (i = 0; i < nGlyphs; ++i) {
+    for (i = 0; i < nGlyphs && i < charsetLength; ++i) {
       cidMap[charset[i]] = i;
     }
   } else {
@@ -906,23 +889,23 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
     // if fdSelect is NULL, we have an 8-bit font, so just leave fd=0
     if (fdSelect) {
       for (j = i==0 ? 1 : 0; j < 256 && i+j < nCIDs; ++j) {
-	if (cidMap[i+j] >= 0) {
-	  fd = fdSelect[cidMap[i+j]];
-	  break;
-	}
+        if (cidMap[i+j] >= 0) {
+          fd = fdSelect[cidMap[i+j]];
+          break;
+        }
       }
     }
 
     // font dictionary (unencrypted section)
     (*outputFunc)(outputStream, "16 dict begin\n", 14);
     (*outputFunc)(outputStream, "/FontName /", 11);
-    (*outputFunc)(outputStream, psName, (int)strlen(psName));
-    buf = GString::format("_{0:02x} def\n", i >> 8);
+    (*outputFunc)(outputStream, psName, strlen(psName));
+    buf = GooString::format("_{0:02x} def\n", i >> 8);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
     (*outputFunc)(outputStream, "/FontType 1 def\n", 16);
     if (privateDicts[fd].hasFontMatrix) {
-      buf = GString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] def\n",
+      buf = GooString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] def\n",
 			    privateDicts[fd].fontMatrix[0],
 			    privateDicts[fd].fontMatrix[1],
 			    privateDicts[fd].fontMatrix[2],
@@ -937,27 +920,27 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
       (*outputFunc)(outputStream,
 		    "/FontMatrix [0.001 0 0 0.001 0 0] def\n", 38);
     }
-    buf = GString::format("/FontBBox [{0:.4g} {1:.4g} {2:.4g} {3:.4g}] def\n",
+    buf = GooString::format("/FontBBox [{0:.4g} {1:.4g} {2:.4g} {3:.4g}] def\n",
 			  topDict.fontBBox[0], topDict.fontBBox[1],
 			  topDict.fontBBox[2], topDict.fontBBox[3]);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
-    buf = GString::format("/PaintType {0:d} def\n", topDict.paintType);
+    buf = GooString::format("/PaintType {0:d} def\n", topDict.paintType);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
     if (topDict.paintType != 0) {
-      buf = GString::format("/StrokeWidth {0:.4g} def\n", topDict.strokeWidth);
+      buf = GooString::format("/StrokeWidth {0:.4g} def\n", topDict.strokeWidth);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     (*outputFunc)(outputStream, "/Encoding 256 array\n", 20);
     for (j = 0; j < 256 && i+j < nCIDs; ++j) {
-      buf = GString::format("dup {0:d} /c{1:02x} put\n", j, j);
+      buf = GooString::format("dup {0:d} /c{1:02x} put\n", j, j);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
     }
     if (j < 256) {
-      buf = GString::format("{0:d} 1 255 {{ 1 index exch /.notdef put }} for\n",
+      buf = GooString::format("{0:d} 1 255 {{ 1 index exch /.notdef put }} for\n",
 			    j);
       (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
       delete buf;
@@ -985,7 +968,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
     if (privateDicts[fd].nBlueValues) {
       eexecWrite(&eb, "/BlueValues [");
       for (k = 0; k < privateDicts[fd].nBlueValues; ++k) {
-	buf = GString::format("{0:s}{1:d}",
+	buf = GooString::format("{0:s}{1:d}",
 			      k > 0 ? " " : "",
 			      privateDicts[fd].blueValues[k]);
 	eexecWrite(&eb, buf->getCString());
@@ -996,7 +979,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
     if (privateDicts[fd].nOtherBlues) {
       eexecWrite(&eb, "/OtherBlues [");
       for (k = 0; k < privateDicts[fd].nOtherBlues; ++k) {
-	buf = GString::format("{0:s}{1:d}",
+	buf = GooString::format("{0:s}{1:d}",
 			      k > 0 ? " " : "",
 			      privateDicts[fd].otherBlues[k]);
 	eexecWrite(&eb, buf->getCString());
@@ -1007,7 +990,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
     if (privateDicts[fd].nFamilyBlues) {
       eexecWrite(&eb, "/FamilyBlues [");
       for (k = 0; k < privateDicts[fd].nFamilyBlues; ++k) {
-	buf = GString::format("{0:s}{1:d}", k > 0 ? " " : "",
+	buf = GooString::format("{0:s}{1:d}", k > 0 ? " " : "",
 			      privateDicts[fd].familyBlues[k]);
 	eexecWrite(&eb, buf->getCString());
 	delete buf;
@@ -1017,7 +1000,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
     if (privateDicts[fd].nFamilyOtherBlues) {
       eexecWrite(&eb, "/FamilyOtherBlues [");
       for (k = 0; k < privateDicts[fd].nFamilyOtherBlues; ++k) {
-	buf = GString::format("{0:s}{1:d}", k > 0 ? " " : "",
+	buf = GooString::format("{0:s}{1:d}", k > 0 ? " " : "",
 			      privateDicts[fd].familyOtherBlues[k]);
 	eexecWrite(&eb, buf->getCString());
 	delete buf;
@@ -1025,93 +1008,73 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
       eexecWrite(&eb, "] def\n");
     }
     if (privateDicts[fd].blueScale != 0.039625) {
-      buf = GString::format("/BlueScale {0:.4g} def\n",
+      buf = GooString::format("/BlueScale {0:.4g} def\n",
 			    privateDicts[fd].blueScale);
       eexecWrite(&eb, buf->getCString());
       delete buf;
     }
     if (privateDicts[fd].blueShift != 7) {
-      buf = GString::format("/BlueShift {0:d} def\n",
+      buf = GooString::format("/BlueShift {0:d} def\n",
 			    privateDicts[fd].blueShift);
       eexecWrite(&eb, buf->getCString());
       delete buf;
     }
     if (privateDicts[fd].blueFuzz != 1) {
-      buf = GString::format("/BlueFuzz {0:d} def\n",
+      buf = GooString::format("/BlueFuzz {0:d} def\n",
 			    privateDicts[fd].blueFuzz);
       eexecWrite(&eb, buf->getCString());
       delete buf;
     }
     if (privateDicts[fd].hasStdHW) {
-      buf = GString::format("/StdHW [{0:.4g}] def\n", privateDicts[fd].stdHW);
+      buf = GooString::format("/StdHW [{0:.4g}] def\n", privateDicts[fd].stdHW);
       eexecWrite(&eb, buf->getCString());
       delete buf;
     }
     if (privateDicts[fd].hasStdVW) {
-      buf = GString::format("/StdVW [{0:.4g}] def\n", privateDicts[fd].stdVW);
+      buf = GooString::format("/StdVW [{0:.4g}] def\n", privateDicts[fd].stdVW);
       eexecWrite(&eb, buf->getCString());
       delete buf;
     }
     if (privateDicts[fd].nStemSnapH) {
-      // the StemSnapH array should be unique values in ascending order --
-      // if not, just skip it
-      for (k = 1; k < privateDicts[fd].nStemSnapH; ++k) {
-	if (privateDicts[fd].stemSnapH[k-1] >= privateDicts[fd].stemSnapH[k]) {
-	  break;
-	}
+      eexecWrite(&eb, "/StemSnapH [");
+      for (k = 0; k < privateDicts[fd].nStemSnapH; ++k) {
+	buf = GooString::format("{0:s}{1:.4g}",
+			      k > 0 ? " " : "", privateDicts[fd].stemSnapH[k]);
+	eexecWrite(&eb, buf->getCString());
+	delete buf;
       }
-      if (k == privateDicts[0].nStemSnapH) {
-	eexecWrite(&eb, "/StemSnapH [");
-	for (k = 0; k < privateDicts[fd].nStemSnapH; ++k) {
-	  buf = GString::format("{0:s}{1:.4g}",
-				k > 0 ? " " : "",
-				privateDicts[fd].stemSnapH[k]);
-	  eexecWrite(&eb, buf->getCString());
-	  delete buf;
-	}
-	eexecWrite(&eb, "] def\n");
-      }
+      eexecWrite(&eb, "] def\n");
     }
     if (privateDicts[fd].nStemSnapV) {
-      // the StemSnapV array should be unique values in ascending order --
-      // if not, just skip it
-      for (k = 1; k < privateDicts[fd].nStemSnapV; ++k) {
-	if (privateDicts[fd].stemSnapV[k-1] >= privateDicts[fd].stemSnapV[k]) {
-	  break;
-	}
+      eexecWrite(&eb, "/StemSnapV [");
+      for (k = 0; k < privateDicts[fd].nStemSnapV; ++k) {
+	buf = GooString::format("{0:s}{1:.4g}",
+			      k > 0 ? " " : "", privateDicts[fd].stemSnapV[k]);
+	eexecWrite(&eb, buf->getCString());
+	delete buf;
       }
-      if (k == privateDicts[0].nStemSnapV) {
-	eexecWrite(&eb, "/StemSnapV [");
-	for (k = 0; k < privateDicts[fd].nStemSnapV; ++k) {
-	  buf = GString::format("{0:s}{1:.4g}",
-				k > 0 ? " " : "",
-				privateDicts[fd].stemSnapV[k]);
-	  eexecWrite(&eb, buf->getCString());
-	  delete buf;
-	}
-	eexecWrite(&eb, "] def\n");
-      }
+      eexecWrite(&eb, "] def\n");
     }
     if (privateDicts[fd].hasForceBold) {
-      buf = GString::format("/ForceBold {0:s} def\n",
+      buf = GooString::format("/ForceBold {0:s} def\n",
 			    privateDicts[fd].forceBold ? "true" : "false");
       eexecWrite(&eb, buf->getCString());
       delete buf;
     }
     if (privateDicts[fd].forceBoldThreshold != 0) {
-      buf = GString::format("/ForceBoldThreshold {0:.4g} def\n",
+      buf = GooString::format("/ForceBoldThreshold {0:.4g} def\n",
 			    privateDicts[fd].forceBoldThreshold);
       eexecWrite(&eb, buf->getCString());
       delete buf;
     }
     if (privateDicts[fd].languageGroup != 0) {
-      buf = GString::format("/LanguageGroup {0:d} def\n",
+      buf = GooString::format("/LanguageGroup {0:d} def\n",
 			    privateDicts[fd].languageGroup);
       eexecWrite(&eb, buf->getCString());
       delete buf;
     }
     if (privateDicts[fd].expansionFactor != 0.06) {
-      buf = GString::format("/ExpansionFactor {0:.4g} def\n",
+      buf = GooString::format("/ExpansionFactor {0:.4g} def\n",
 			    privateDicts[fd].expansionFactor);
       eexecWrite(&eb, buf->getCString());
       delete buf;
@@ -1141,7 +1104,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
 	ok = gTrue;
 	getIndexVal(&charStringsIdx, cidMap[i+j], &val, &ok);
 	if (ok) {
-	  buf = GString::format("c{0:02x}", j);
+	  buf = GooString::format("c{0:02x}", j);
 	  eexecCvtGlyph(&eb, buf->getCString(), val.pos, val.len,
 			&subrIdx, &privateDicts[fd]);
 	  delete buf;
@@ -1168,11 +1131,11 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
   // write the Type 0 parent font
   (*outputFunc)(outputStream, "16 dict begin\n", 14);
   (*outputFunc)(outputStream, "/FontName /", 11);
-  (*outputFunc)(outputStream, psName, (int)strlen(psName));
+  (*outputFunc)(outputStream, psName, strlen(psName));
   (*outputFunc)(outputStream, " def\n", 5);
   (*outputFunc)(outputStream, "/FontType 0 def\n", 16);
   if (topDict.hasFontMatrix) {
-    buf = GString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] def\n",
+    buf = GooString::format("/FontMatrix [{0:.8g} {1:.8g} {2:.8g} {3:.8g} {4:.8g} {5:.8g}] def\n",
 			  topDict.fontMatrix[0], topDict.fontMatrix[1],
 			  topDict.fontMatrix[2], topDict.fontMatrix[3],
 			  topDict.fontMatrix[4], topDict.fontMatrix[5]);
@@ -1184,7 +1147,7 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
   (*outputFunc)(outputStream, "/FMapType 2 def\n", 16);
   (*outputFunc)(outputStream, "/Encoding [\n", 12);
   for (i = 0; i < nCIDs; i += 256) {
-    buf = GString::format("{0:d}\n", i >> 8);
+    buf = GooString::format("{0:d}\n", i >> 8);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
   }
@@ -1192,8 +1155,8 @@ void FoFiType1C::convertToType0(char *psName, int *codeMap, int nCodes,
   (*outputFunc)(outputStream, "/FDepVector [\n", 14);
   for (i = 0; i < nCIDs; i += 256) {
     (*outputFunc)(outputStream, "/", 1);
-    (*outputFunc)(outputStream, psName, (int)strlen(psName));
-    buf = GString::format("_{0:02x} findfont\n", i >> 8);
+    (*outputFunc)(outputStream, psName, strlen(psName));
+    buf = GooString::format("_{0:02x} findfont\n", i >> 8);
     (*outputFunc)(outputStream, buf->getCString(), buf->getLength());
     delete buf;
   }
@@ -1207,14 +1170,14 @@ void FoFiType1C::eexecCvtGlyph(Type1CEexecBuf *eb, const char *glyphName,
 			       int offset, int nBytes,
 			       Type1CIndex *subrIdx,
 			       Type1CPrivateDict *pDict) {
-  GString *buf;
-  GString *charBuf;
+  GooString *buf;
+  GooString *charBuf;
 
   // generate the charstring
-  charBuf = new GString();
+  charBuf = new GooString();
   cvtGlyph(offset, nBytes, charBuf, subrIdx, pDict, gTrue);
 
-  buf = GString::format("/{0:s} {1:d} RD ", glyphName, charBuf->getLength());
+  buf = GooString::format("/{0:s} {1:d} RD ", glyphName, charBuf->getLength());
   eexecWrite(eb, buf->getCString());
   delete buf;
   eexecWriteCharstring(eb, (Guchar *)charBuf->getCString(),
@@ -1224,7 +1187,7 @@ void FoFiType1C::eexecCvtGlyph(Type1CEexecBuf *eb, const char *glyphName,
   delete charBuf;
 }
 
-void FoFiType1C::cvtGlyph(int offset, int nBytes, GString *charBuf,
+void FoFiType1C::cvtGlyph(int offset, int nBytes, GooString *charBuf,
 			  Type1CIndex *subrIdx, Type1CPrivateDict *pDict,
 			  GBool top) {
   Type1CIndexVal val;
@@ -1856,7 +1819,7 @@ void FoFiType1C::cvtGlyph(int offset, int nBytes, GString *charBuf,
   }
 }
 
-void FoFiType1C::cvtGlyphWidth(GBool useOp, GString *charBuf,
+void FoFiType1C::cvtGlyphWidth(GBool useOp, GooString *charBuf,
 			       Type1CPrivateDict *pDict) {
   double w;
   GBool wFP;
@@ -1878,7 +1841,7 @@ void FoFiType1C::cvtGlyphWidth(GBool useOp, GString *charBuf,
   charBuf->append((char)13);
 }
 
-void FoFiType1C::cvtNum(double x, GBool isFP, GString *charBuf) {
+void FoFiType1C::cvtNum(double x, GBool isFP, GooString *charBuf) {
   Guchar buf[12];
   int y, n;
 
@@ -2035,7 +1998,7 @@ GBool FoFiType1C::parse() {
   if (!parsedOk) {
     return gFalse;
   }
-  name = new GString((char *)&file[val.pos], val.len);
+  name = new GooString((char *)&file[val.pos], val.len);
 
   // read the top dict for the first font
   readTopDict();
@@ -2213,7 +2176,7 @@ void FoFiType1C::readTopDict() {
 // (if any) out of the FD.
 void FoFiType1C::readFD(int offset, int length, Type1CPrivateDict *pDict) {
   int pos, pSize, pOffset;
-  double fontMatrix[6];
+  double fontMatrix[6] = {0};
   GBool hasFontMatrix;
 
   hasFontMatrix = gFalse;
@@ -2229,21 +2192,21 @@ void FoFiType1C::readFD(int offset, int length, Type1CPrivateDict *pDict) {
     }
     if (!ops[nOps - 1].isNum) {
       if (ops[nOps - 1].op == 0x0012) {
-	if (nOps < 3) {
-	  parsedOk = gFalse;
-	  return;
-	}
-	pSize = (int)ops[0].num;
-	pOffset = (int)ops[1].num;
-	break;
+        if (nOps < 3) {
+          parsedOk = gFalse;
+          return;
+        }
+        pSize = (int)ops[0].num;
+        pOffset = (int)ops[1].num;
+        break;
       } else if (ops[nOps - 1].op == 0x0c07) {
-	fontMatrix[0] = ops[0].num;
-	fontMatrix[1] = ops[1].num;
-	fontMatrix[2] = ops[2].num;
-	fontMatrix[3] = ops[3].num;
-	fontMatrix[4] = ops[4].num;
-	fontMatrix[5] = ops[5].num;
-	hasFontMatrix = gTrue;
+        fontMatrix[0] = ops[0].num;
+        fontMatrix[1] = ops[1].num;
+        fontMatrix[2] = ops[2].num;
+        fontMatrix[3] = ops[3].num;
+        fontMatrix[4] = ops[4].num;
+        fontMatrix[5] = ops[5].num;
+        hasFontMatrix = gTrue;
       }
       nOps = 0;
     }
@@ -2456,7 +2419,7 @@ void FoFiType1C::buildEncoding() {
       if (nCodes > nGlyphs) {
 	nCodes = nGlyphs;
       }
-      for (i = 1; i < nCodes; ++i) {
+      for (i = 1; i < nCodes && i < charsetLength; ++i) {
 	c = getU8(pos++, &parsedOk);
 	if (!parsedOk) {
 	  return;
@@ -2478,7 +2441,7 @@ void FoFiType1C::buildEncoding() {
 	if (!parsedOk) {
 	  return;
 	}
-	for (j = 0; j <= nLeft && nCodes < nGlyphs; ++j) {
+	for (j = 0; j <= nLeft && nCodes < nGlyphs && nCodes < charsetLength; ++j) {
 	  if (c < 256) {
 	    if (encoding[c]) {
 	      gfree(encoding[c]);
@@ -2521,12 +2484,16 @@ GBool FoFiType1C::readCharset() {
 
   if (topDict.charsetOffset == 0) {
     charset = fofiType1CISOAdobeCharset;
+    charsetLength = sizeof(fofiType1CISOAdobeCharset) / sizeof(Gushort);
   } else if (topDict.charsetOffset == 1) {
     charset = fofiType1CExpertCharset;
+    charsetLength = sizeof(fofiType1CExpertCharset) / sizeof(Gushort);
   } else if (topDict.charsetOffset == 2) {
     charset = fofiType1CExpertSubsetCharset;
+    charsetLength = sizeof(fofiType1CExpertSubsetCharset) / sizeof(Gushort);
   } else {
     charset = (Gushort *)gmallocn(nGlyphs, sizeof(Gushort));
+    charsetLength = nGlyphs;
     for (i = 0; i < nGlyphs; ++i) {
       charset[i] = 0;
     }
@@ -2571,6 +2538,7 @@ GBool FoFiType1C::readCharset() {
     if (!parsedOk) {
       gfree(charset);
       charset = NULL;
+      charsetLength = 0;
       return gFalse;
     }
   }
@@ -2636,7 +2604,7 @@ int FoFiType1C::getOp(int pos, GBool charstring, GBool *ok) {
       }
     } while (i < 64);
     buf[i] = '\0';
-    op.num = atof(buf);
+    op.num = gatof(buf);
     op.isFP = gTrue;
 
   } else if (b0 >= 32 && b0 <= 246) {

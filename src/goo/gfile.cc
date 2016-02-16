@@ -8,11 +8,33 @@
 //
 //========================================================================
 
-#include <aconf.h>
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2006 Takashi Iwai <tiwai@suse.de>
+// Copyright (C) 2006 Kristian Høgsberg <krh@redhat.com>
+// Copyright (C) 2008 Adam Batkin <adam@batkin.net>
+// Copyright (C) 2008, 2010, 2012, 2013 Hib Eris <hib@hiberis.nl>
+// Copyright (C) 2009, 2012, 2014 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2009 Kovid Goyal <kovid@kovidgoyal.net>
+// Copyright (C) 2013 Adam Reichold <adamreichold@myopera.com>
+// Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
+// Copyright (C) 2013 Peter Breitenlohner <peb@mppmu.mpg.de>
+// Copyright (C) 2013 Thomas Freitag <Thomas.Freitag@alfa.de>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
+#include <config.h>
 
 #ifdef _WIN32
 #  include <time.h>
-#  include <direct.h>
 #else
 #  if defined(MACOS)
 #    include <sys/stat.h>
@@ -31,7 +53,9 @@
 #    include <unixlib.h>
 #  endif
 #endif // _WIN32
-#include "GString.h"
+#include <stdio.h>
+#include <limits>
+#include "GooString.h"
 #include "gfile.h"
 
 // Some systems don't define this, so just make it something reasonably
@@ -42,59 +66,13 @@
 
 //------------------------------------------------------------------------
 
-GString *getHomeDir() {
-#ifdef VMS
-  //---------- VMS ----------
-  return new GString("SYS$LOGIN:");
-
-#elif defined(__EMX__) || defined(_WIN32)
-  //---------- OS/2+EMX and Win32 ----------
-  char *s;
-  GString *ret;
-
-  if ((s = getenv("HOME")))
-    ret = new GString(s);
-  else
-    ret = new GString(".");
-  return ret;
-
-#elif defined(ACORN)
-  //---------- RISCOS ----------
-  return new GString("@");
-
-#elif defined(MACOS)
-  //---------- MacOS ----------
-  return new GString(":");
-
-#else
-  //---------- Unix ----------
-  char *s;
-  struct passwd *pw;
-  GString *ret;
-
-  if ((s = getenv("HOME"))) {
-    ret = new GString(s);
-  } else {
-    if ((s = getenv("USER")))
-      pw = getpwnam(s);
-    else
-      pw = getpwuid(getuid());
-    if (pw)
-      ret = new GString(pw->pw_dir);
-    else
-      ret = new GString(".");
-  }
-  return ret;
-#endif
-}
-
-GString *getCurrentDir() {
+GooString *getCurrentDir() {
   char buf[PATH_MAX+1];
 
 #if defined(__EMX__)
   if (_getcwd2(buf, sizeof(buf)))
 #elif defined(_WIN32)
-  if (GetCurrentDirectoryA(sizeof(buf), buf))
+  if (GetCurrentDirectory(sizeof(buf), buf))
 #elif defined(ACORN)
   if (strcpy(buf, "@"))
 #elif defined(MACOS)
@@ -102,11 +80,11 @@ GString *getCurrentDir() {
 #else
   if (getcwd(buf, sizeof(buf)))
 #endif
-    return new GString(buf);
-  return new GString();
+    return new GooString(buf);
+  return new GooString();
 }
 
-GString *appendToPath(GString *path, const char *fileName) {
+GooString *appendToPath(GooString *path, const char *fileName) {
 #if defined(VMS)
   //---------- VMS ----------
   //~ this should handle everything necessary for file
@@ -149,14 +127,14 @@ GString *appendToPath(GString *path, const char *fileName) {
 
 #elif defined(_WIN32)
   //---------- Win32 ----------
-  GString *tmp;
+  GooString *tmp;
   char buf[256];
   char *fp;
 
-  tmp = new GString(path);
+  tmp = new GooString(path);
   tmp->append('/');
   tmp->append(fileName);
-  GetFullPathNameA(tmp->getCString(), sizeof(buf), buf, &fp);
+  GetFullPathName(tmp->getCString(), sizeof(buf), buf, &fp);
   delete tmp;
   path->clear();
   path->append(buf);
@@ -272,52 +250,52 @@ GString *appendToPath(GString *path, const char *fileName) {
 #endif
 }
 
-GString *grabPath(char *fileName) {
+GooString *grabPath(char *fileName) {
 #ifdef VMS
   //---------- VMS ----------
   char *p;
 
   if ((p = strrchr(fileName, ']')))
-    return new GString(fileName, p + 1 - fileName);
+    return new GooString(fileName, p + 1 - fileName);
   if ((p = strrchr(fileName, ':')))
-    return new GString(fileName, p + 1 - fileName);
-  return new GString();
+    return new GooString(fileName, p + 1 - fileName);
+  return new GooString();
 
 #elif defined(__EMX__) || defined(_WIN32)
   //---------- OS/2+EMX and Win32 ----------
   char *p;
 
   if ((p = strrchr(fileName, '/')))
-    return new GString(fileName, (int)(p - fileName));
+    return new GooString(fileName, p - fileName);
   if ((p = strrchr(fileName, '\\')))
-    return new GString(fileName, (int)(p - fileName));
+    return new GooString(fileName, p - fileName);
   if ((p = strrchr(fileName, ':')))
-    return new GString(fileName, (int)(p + 1 - fileName));
-  return new GString();
+    return new GooString(fileName, p + 1 - fileName);
+  return new GooString();
 
 #elif defined(ACORN)
   //---------- RISCOS ----------
   char *p;
 
   if ((p = strrchr(fileName, '.')))
-    return new GString(fileName, p - fileName);
-  return new GString();
+    return new GooString(fileName, p - fileName);
+  return new GooString();
 
 #elif defined(MACOS)
   //---------- MacOS ----------
   char *p;
 
   if ((p = strrchr(fileName, ':')))
-    return new GString(fileName, p - fileName);
-  return new GString();
+    return new GooString(fileName, p - fileName);
+  return new GooString();
 
 #else
   //---------- Unix ----------
   char *p;
 
   if ((p = strrchr(fileName, '/')))
-    return new GString(fileName, p - fileName);
-  return new GString();
+    return new GooString(fileName, p - fileName);
+  return new GooString();
 #endif
 }
 
@@ -345,88 +323,6 @@ GBool isAbsolutePath(char *path) {
 #endif
 }
 
-GString *makePathAbsolute(GString *path) {
-#ifdef VMS
-  //---------- VMS ----------
-  char buf[PATH_MAX+1];
-
-  if (!isAbsolutePath(path->getCString())) {
-    if (getcwd(buf, sizeof(buf))) {
-      path->insert(0, buf);
-    }
-  }
-  return path;
-
-#elif defined(_WIN32)
-  //---------- Win32 ----------
-  char buf[_MAX_PATH];
-  char *fp;
-
-  buf[0] = '\0';
-  if (!GetFullPathNameA(path->getCString(), _MAX_PATH, buf, &fp)) {
-    path->clear();
-    return path;
-  }
-  path->clear();
-  path->append(buf);
-  return path;
-
-#elif defined(ACORN)
-  //---------- RISCOS ----------
-  path->insert(0, '@');
-  return path;
-
-#elif defined(MACOS)
-  //---------- MacOS ----------
-  path->del(0, 1);
-  return path;
-
-#else
-  //---------- Unix and OS/2+EMX ----------
-  struct passwd *pw;
-  char buf[PATH_MAX+1];
-  GString *s;
-  char *p1, *p2;
-  int n;
-
-  if (path->getChar(0) == '~') {
-    if (path->getChar(1) == '/' ||
-#ifdef __EMX__
-	path->getChar(1) == '\\' ||
-#endif
-	path->getLength() == 1) {
-      path->del(0, 1);
-      s = getHomeDir();
-      path->insert(0, s);
-      delete s;
-    } else {
-      p1 = path->getCString() + 1;
-#ifdef __EMX__
-      for (p2 = p1; *p2 && *p2 != '/' && *p2 != '\\'; ++p2) ;
-#else
-      for (p2 = p1; *p2 && *p2 != '/'; ++p2) ;
-#endif
-      if ((n = p2 - p1) > PATH_MAX)
-	n = PATH_MAX;
-      strncpy(buf, p1, n);
-      buf[n] = '\0';
-      if ((pw = getpwnam(buf))) {
-	path->del(0, p2 - p1 + 1);
-	path->insert(0, pw->pw_dir);
-      }
-    }
-  } else if (!isAbsolutePath(path->getCString())) {
-    if (getcwd(buf, sizeof(buf))) {
-#ifndef __EMX__
-      path->insert(0, '/');
-#endif
-      path->insert(0, buf);
-    }
-  }
-  return path;
-#endif
-}
-
 time_t getModTime(char *fileName) {
 #ifdef _WIN32
   //~ should implement this, but it's (currently) only used in xpdf
@@ -441,12 +337,11 @@ time_t getModTime(char *fileName) {
 #endif
 }
 
-GBool openTempFile(GString **name, FILE **f,
-		   const char *mode, const char *ext) {
+GBool openTempFile(GooString **name, FILE **f, const char *mode) {
 #if defined(_WIN32)
   //---------- Win32 ----------
   char *tempDir;
-  GString *s, *s2;
+  GooString *s, *s2;
   FILE *f2;
   int t, i;
 
@@ -454,24 +349,21 @@ GBool openTempFile(GString **name, FILE **f,
   // a better way to generate temp file names with extensions on
   // Windows
   if ((tempDir = getenv("TEMP"))) {
-    s = new GString(tempDir);
+    s = new GooString(tempDir);
     s->append('\\');
   } else {
-    s = new GString();
+    s = new GooString();
   }
   s->appendf("x_{0:d}_{1:d}_",
 	     (int)GetCurrentProcessId(), (int)GetCurrentThreadId());
   t = (int)time(NULL);
   for (i = 0; i < 1000; ++i) {
     s2 = s->copy()->appendf("{0:d}", t + i);
-    if (ext) {
-      s2->append(ext);
-    }
     if (!(f2 = fopen(s2->getCString(), "r"))) {
       if (!(f2 = fopen(s2->getCString(), mode))) {
 	delete s2;
 	delete s;
-	return gFalse;
+        return gFalse;
       }
       *name = s2;
       *f = f2;
@@ -494,10 +386,7 @@ GBool openTempFile(GString **name, FILE **f,
   if (!(s = tmpnam(NULL))) {
     return gFalse;
   }
-  *name = new GString(s);
-  if (ext) {
-    (*name)->append(ext);
-  }
+  *name = new GooString(s);
   if (!(*f = fopen((*name)->getCString(), mode))) {
     delete (*name);
     *name = NULL;
@@ -509,40 +398,21 @@ GBool openTempFile(GString **name, FILE **f,
   char *s;
   int fd;
 
-  if (ext) {
-#if HAVE_MKSTEMPS
-    if ((s = getenv("TMPDIR"))) {
-      *name = new GString(s);
-    } else {
-      *name = new GString("/tmp");
-    }
-    (*name)->append("/XXXXXX")->append(ext);
-    fd = mkstemps((*name)->getCString(), strlen(ext));
-#else
-    if (!(s = tmpnam(NULL))) {
-      return gFalse;
-    }
-    *name = new GString(s);
-    (*name)->append(ext);
-    fd = open((*name)->getCString(), O_WRONLY | O_CREAT | O_EXCL, 0600);
-#endif
-  } else {
 #if HAVE_MKSTEMP
-    if ((s = getenv("TMPDIR"))) {
-      *name = new GString(s);
-    } else {
-      *name = new GString("/tmp");
-    }
-    (*name)->append("/XXXXXX");
-    fd = mkstemp((*name)->getCString());
-#else // HAVE_MKSTEMP
-    if (!(s = tmpnam(NULL))) {
-      return gFalse;
-    }
-    *name = new GString(s);
-    fd = open((*name)->getCString(), O_WRONLY | O_CREAT | O_EXCL, 0600);
-#endif // HAVE_MKSTEMP
+  if ((s = getenv("TMPDIR"))) {
+    *name = new GooString(s);
+  } else {
+    *name = new GooString("/tmp");
   }
+  (*name)->append("/XXXXXX");
+  fd = mkstemp((*name)->getCString());
+#else // HAVE_MKSTEMP
+  if (!(s = tmpnam(NULL))) {
+    return gFalse;
+  }
+  *name = new GooString(s);
+  fd = open((*name)->getCString(), O_WRONLY | O_CREAT | O_EXCL, 0600);
+#endif // HAVE_MKSTEMP
   if (fd < 0 || !(*f = fdopen(fd, mode))) {
     delete *name;
     *name = NULL;
@@ -552,28 +422,12 @@ GBool openTempFile(GString **name, FILE **f,
 #endif
 }
 
-GBool createDir(char *path, int mode) {
-#ifdef _WIN32
-  return !mkdir(path);
-#else
-  return !mkdir(path, mode);
-#endif
-}
-
-GBool executeCommand(char *cmd) {
-#ifdef VMS
-  return system(cmd) ? gTrue : gFalse;
-#else
-  return system(cmd) ? gFalse : gTrue;
-#endif
-}
-
-#ifdef _WIN32
-GString *fileNameToUTF8(char *path) {
-  GString *s;
+#ifdef WIN32
+GooString *fileNameToUTF8(char *path) {
+  GooString *s;
   char *p;
 
-  s = new GString();
+  s = new GooString();
   for (p = path; *p; ++p) {
     if (*p & 0x80) {
       s->append((char)(0xc0 | ((*p >> 6) & 0x03)));
@@ -585,11 +439,11 @@ GString *fileNameToUTF8(char *path) {
   return s;
 }
 
-GString *fileNameToUTF8(wchar_t *path) {
-  GString *s;
+GooString *fileNameToUTF8(wchar_t *path) {
+  GooString *s;
   wchar_t *p;
 
-  s = new GString();
+  s = new GooString();
   for (p = path; *p; ++p) {
     if (*p < 0x80) {
       s->append((char)*p);
@@ -607,13 +461,13 @@ GString *fileNameToUTF8(wchar_t *path) {
 #endif
 
 FILE *openFile(const char *path, const char *mode) {
-#ifdef _WIN32
+#ifdef WIN32
   OSVERSIONINFO version;
   wchar_t wPath[_MAX_PATH + 1];
   char nPath[_MAX_PATH + 1];
   wchar_t wMode[8];
   const char *p;
-  int i;
+  size_t i;
 
   // NB: _wfopen is only available in NT
   version.dwOSVersionInfoSize = sizeof(version);
@@ -638,7 +492,7 @@ FILE *openFile(const char *path, const char *mode) {
       }
     }
     wPath[i] = (wchar_t)0;
-    for (i = 0; mode[i] && i < sizeof(mode) - 1; ++i) {
+    for (i = 0; (i < sizeof(mode) - 1) && mode[i]; ++i) {
       wMode[i] = (wchar_t)(mode[i] & 0xff);
     }
     wMode[i] = (wchar_t)0;
@@ -698,29 +552,124 @@ char *getLine(char *buf, int size, FILE *f) {
   return buf;
 }
 
-int gfseek(FILE *f, GFileOffset offset, int whence) {
+int Gfseek(FILE *f, Goffset offset, int whence) {
 #if HAVE_FSEEKO
   return fseeko(f, offset, whence);
 #elif HAVE_FSEEK64
   return fseek64(f, offset, whence);
-#elif HAVE_FSEEKI64
+#elif defined(__MINGW32__)
+  return fseeko64(f, offset, whence);
+#elif _WIN32
   return _fseeki64(f, offset, whence);
 #else
   return fseek(f, offset, whence);
 #endif
 }
 
-GFileOffset gftell(FILE *f) {
+Goffset Gftell(FILE *f) {
 #if HAVE_FSEEKO
   return ftello(f);
 #elif HAVE_FSEEK64
   return ftell64(f);
-#elif HAVE_FSEEKI64
+#elif defined(__MINGW32__)
+  return ftello64(f);
+#elif _WIN32
   return _ftelli64(f);
 #else
   return ftell(f);
 #endif
 }
+
+Goffset GoffsetMax() {
+#if HAVE_FSEEKO
+  return (std::numeric_limits<off_t>::max)();
+#elif HAVE_FSEEK64 || defined(__MINGW32__)
+  return (std::numeric_limits<off64_t>::max)();
+#elif _WIN32
+  return (std::numeric_limits<__int64>::max)();
+#else
+  return (std::numeric_limits<long>::max)();
+#endif
+}
+
+//------------------------------------------------------------------------
+// GooFile
+//------------------------------------------------------------------------
+
+#ifdef _WIN32
+
+int GooFile::read(char *buf, int n, Goffset offset) const {
+  DWORD m;
+  
+  LARGE_INTEGER largeInteger = {0};
+  largeInteger.QuadPart = offset;
+  
+  OVERLAPPED overlapped = {0};
+  overlapped.Offset = largeInteger.LowPart;
+  overlapped.OffsetHigh = largeInteger.HighPart;
+
+  return FALSE == ReadFile(handle, buf, n, &m, &overlapped) ? -1 : m;
+}
+
+Goffset GooFile::size() const {
+  LARGE_INTEGER size = {(DWORD)-1,-1};
+  
+  GetFileSizeEx(handle, &size);
+
+  return size.QuadPart;
+}
+
+GooFile* GooFile::open(const GooString *fileName) {
+  HANDLE handle = CreateFile(fileName->getCString(),
+                              GENERIC_READ,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE,
+                              NULL,
+                              OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL, NULL);
+  
+  return handle == INVALID_HANDLE_VALUE ? NULL : new GooFile(handle);
+}
+
+GooFile* GooFile::open(const wchar_t *fileName) {
+  HANDLE handle = CreateFileW(fileName,
+                              GENERIC_READ,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE,
+                              NULL,
+                              OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL, NULL);
+  
+  return handle == INVALID_HANDLE_VALUE ? NULL : new GooFile(handle);
+}
+
+#else
+
+int GooFile::read(char *buf, int n, Goffset offset) const {
+#ifdef HAVE_PREAD64
+  return pread64(fd, buf, n, offset);
+#else
+  return pread(fd, buf, n, offset);
+#endif
+}
+
+Goffset GooFile::size() const {
+#ifdef HAVE_LSEEK64
+  return lseek64(fd, 0, SEEK_END);
+#else
+  return lseek(fd, 0, SEEK_END);
+#endif
+}
+
+GooFile* GooFile::open(const GooString *fileName) {
+#ifdef VMS
+  int fd = ::open(fileName->getCString(), Q_RDONLY, "ctx=stm");
+#else
+  int fd = ::open(fileName->getCString(), O_RDONLY);
+#endif
+  
+  return fd < 0 ? NULL : new GooFile(fd);
+}
+
+#endif // _WIN32
 
 //------------------------------------------------------------------------
 // GDir and GDirEntry
@@ -730,16 +679,16 @@ GDirEntry::GDirEntry(char *dirPath, char *nameA, GBool doStat) {
 #ifdef VMS
   char *p;
 #elif defined(_WIN32)
-  int fa;
-  GString *s;
+  DWORD fa;
 #elif defined(ACORN)
 #else
   struct stat st;
-  GString *s;
 #endif
 
-  name = new GString(nameA);
+  name = new GooString(nameA);
   dir = gFalse;
+  fullPath = new GooString(dirPath);
+  appendToPath(fullPath, nameA);
   if (doStat) {
 #ifdef VMS
     if (!strcmp(nameA, "-") ||
@@ -747,37 +696,34 @@ GDirEntry::GDirEntry(char *dirPath, char *nameA, GBool doStat) {
       dir = gTrue;
 #elif defined(ACORN)
 #else
-    s = new GString(dirPath);
-    appendToPath(s, nameA);
 #ifdef _WIN32
-    fa = GetFileAttributesA(s->getCString());
+    fa = GetFileAttributes(fullPath->getCString());
     dir = (fa != 0xFFFFFFFF && (fa & FILE_ATTRIBUTE_DIRECTORY));
 #else
-    if (stat(s->getCString(), &st) == 0)
+    if (stat(fullPath->getCString(), &st) == 0)
       dir = S_ISDIR(st.st_mode);
 #endif
-    delete s;
 #endif
   }
 }
 
 GDirEntry::~GDirEntry() {
+  delete fullPath;
   delete name;
 }
 
 GDir::GDir(char *name, GBool doStatA) {
-  path = new GString(name);
+  path = new GooString(name);
   doStat = doStatA;
 #if defined(_WIN32)
-  GString *tmp;
+  GooString *tmp;
 
   tmp = path->copy();
   tmp->append("/*.*");
-  hnd = FindFirstFileA(tmp->getCString(), &ffd);
+  hnd = FindFirstFile(tmp->getCString(), &ffd);
   delete tmp;
 #elif defined(ACORN)
 #elif defined(MACOS)
-#elif defined(ANDROID)
 #else
   dir = opendir(name);
 #ifdef VMS
@@ -789,13 +735,12 @@ GDir::GDir(char *name, GBool doStatA) {
 GDir::~GDir() {
   delete path;
 #if defined(_WIN32)
-  if (hnd) {
+  if (hnd != INVALID_HANDLE_VALUE) {
     FindClose(hnd);
-    hnd = NULL;
+    hnd = INVALID_HANDLE_VALUE;
   }
 #elif defined(ACORN)
 #elif defined(MACOS)
-#elif defined(ANDROID)
 #else
   if (dir)
     closedir(dir);
@@ -803,24 +748,20 @@ GDir::~GDir() {
 }
 
 GDirEntry *GDir::getNextEntry() {
-  GDirEntry *e;
+  GDirEntry *e = NULL;
 
 #if defined(_WIN32)
-  if (hnd) {
+  if (hnd != INVALID_HANDLE_VALUE) {
     e = new GDirEntry(path->getCString(), ffd.cFileName, doStat);
-    if (hnd  && !FindNextFileA(hnd, &ffd)) {
+    if (!FindNextFile(hnd, &ffd)) {
       FindClose(hnd);
-      hnd = NULL;
+      hnd = INVALID_HANDLE_VALUE;
     }
-  } else {
-    e = NULL;
   }
 #elif defined(ACORN)
 #elif defined(MACOS)
-#elif defined(ANDROID)
 #elif defined(VMS)
   struct dirent *ent;
-  e = NULL;
   if (dir) {
     if (needParent) {
       e = new GDirEntry(path->getCString(), "-", doStat);
@@ -834,12 +775,11 @@ GDirEntry *GDir::getNextEntry() {
   }
 #else
   struct dirent *ent;
-  e = NULL;
   if (dir) {
-    ent = (struct dirent *)readdir(dir);
-    if (ent && !strcmp(ent->d_name, ".")) {
-      ent = (struct dirent *)readdir(dir);
+    do {
+      ent = readdir(dir);
     }
+    while (ent && (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")));
     if (ent) {
       e = new GDirEntry(path->getCString(), ent->d_name, doStat);
     }
@@ -851,17 +791,16 @@ GDirEntry *GDir::getNextEntry() {
 
 void GDir::rewind() {
 #ifdef _WIN32
-  GString *tmp;
+  GooString *tmp;
 
-  if (hnd)
+  if (hnd != INVALID_HANDLE_VALUE)
     FindClose(hnd);
   tmp = path->copy();
   tmp->append("/*.*");
-  hnd = FindFirstFileA(tmp->getCString(), &ffd);
+  hnd = FindFirstFile(tmp->getCString(), &ffd);
   delete tmp;
 #elif defined(ACORN)
 #elif defined(MACOS)
-#elif defined(ANDROID)
 #else
   if (dir)
     rewinddir(dir);

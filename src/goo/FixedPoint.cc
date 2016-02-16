@@ -8,7 +8,7 @@
 //
 //========================================================================
 
-#include <aconf.h>
+#include <config.h>
 
 #if USE_FIXEDPOINT
 
@@ -17,6 +17,8 @@
 #endif
 
 #include "FixedPoint.h"
+
+#define ln2 ((FixedPoint)0.69314718)
 
 #define ln2 ((FixedPoint)0.69314718)
 
@@ -118,8 +120,8 @@ GBool FixedPoint::divCheck(FixedPoint x, FixedPoint y, FixedPoint *result) {
 }
 
 GBool FixedPoint::checkDet(FixedPoint m11, FixedPoint m12,
-			   FixedPoint m21, FixedPoint m22,
-			   FixedPoint epsilon) {
+                          FixedPoint m21, FixedPoint m22,
+                          FixedPoint epsilon) {
   FixPtInt64 det, e;
 
   det = (FixPtInt64)m11.val * (FixPtInt64)m22.val

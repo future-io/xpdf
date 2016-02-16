@@ -9,13 +9,11 @@
 #ifndef FOFIBASE_H
 #define FOFIBASE_H
 
-#include <aconf.h>
-
 #ifdef USE_GCC_PRAGMAS
 #pragma interface
 #endif
 
-#include "gtypes.h"
+#include "goo/gtypes.h"
 
 //------------------------------------------------------------------------
 

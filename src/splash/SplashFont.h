@@ -2,21 +2,32 @@
 //
 // SplashFont.h
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
+//========================================================================
+
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2007-2008 Albert Astals Cid <aacid@kde.org>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
 //
 //========================================================================
 
 #ifndef SPLASHFONT_H
 #define SPLASHFONT_H
 
-#include <aconf.h>
-
 #ifdef USE_GCC_PRAGMAS
 #pragma interface
 #endif
 
-#include "gtypes.h"
+#include "goo/gtypes.h"
 #include "SplashTypes.h"
+#include "SplashClip.h"
 
 struct SplashGlyphBitmap;
 struct SplashFontCacheTag;
@@ -68,15 +79,19 @@ public:
   // should override this to zero out xFrac and/or yFrac if they don't
   // support fractional coordinates.
   virtual GBool getGlyph(int c, int xFrac, int yFrac,
-			 SplashGlyphBitmap *bitmap);
+			 SplashGlyphBitmap *bitmap, int x0, int y0, SplashClip *clip, SplashClipResult *clipRes);
 
   // Rasterize a glyph.  The <xFrac> and <yFrac> values are the same
   // as described for getGlyph.
   virtual GBool makeGlyph(int c, int xFrac, int yFrac,
-			  SplashGlyphBitmap *bitmap) = 0;
+			  SplashGlyphBitmap *bitmap, int x0, int y0, SplashClip *clip, SplashClipResult *clipRes) = 0;
 
   // Return the path for a glyph.
   virtual SplashPath *getGlyphPath(int c) = 0;
+
+  // Return the advance of a glyph. (in 0..1 range)
+  // < 0 means not known
+  virtual double getGlyphAdvance(int c) { return -1; }
 
   // Return the font transform matrix.
   SplashCoord *getMatrix() { return mat; }

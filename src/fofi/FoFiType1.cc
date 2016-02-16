@@ -6,7 +6,24 @@
 //
 //========================================================================
 
-#include <aconf.h>
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2005, 2008, 2010 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2005 Kristian Høgsberg <krh@redhat.com>
+// Copyright (C) 2010 Jakub Wilk <jwilk@jwilk.net>
+// Copyright (C) 2014 Carlos Garcia Campos <carlosgc@gnome.org>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
+#include <config.h>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma implementation
@@ -14,9 +31,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "gmem.h"
+#include "goo/gmem.h"
+#include "goo/GooLikely.h"
 #include "FoFiEncodings.h"
 #include "FoFiType1.h"
+#include "poppler/Error.h"
 
 //------------------------------------------------------------------------
 // FoFiType1
@@ -57,7 +76,7 @@ FoFiType1::~FoFiType1() {
   if (name) {
     gfree(name);
   }
-  if (encoding && encoding != (char **)fofiType1StandardEncoding) {
+  if (encoding && encoding != fofiType1StandardEncoding) {
     for (i = 0; i < 256; ++i) {
       gfree(encoding[i]);
     }
@@ -105,7 +124,7 @@ void FoFiType1::writeEncoded(const char **newEncoding,
     (*outputFunc)(outputStream, (char *)file, len);
     return;
   }
-  (*outputFunc)(outputStream, (char *)file, (int)(line - (char *)file));
+  (*outputFunc)(outputStream, (char *)file, line - (char *)file);
 
   // write the new encoding
   (*outputFunc)(outputStream, "/Encoding 256 array\n", 20);
@@ -114,7 +133,7 @@ void FoFiType1::writeEncoded(const char **newEncoding,
   for (i = 0; i < 256; ++i) {
     if (newEncoding[i]) {
       sprintf(buf, "dup %d /%s put\n", i, newEncoding[i]);
-      (*outputFunc)(outputStream, buf, (int)strlen(buf));
+      (*outputFunc)(outputStream, buf, strlen(buf));
     }
   }
   (*outputFunc)(outputStream, "readonly def\n", 13);
@@ -146,7 +165,7 @@ void FoFiType1::writeEncoded(const char **newEncoding,
 	 i < 20 && line2 && strncmp(line2, "/Encoding", 9);
 	 line2 = getNextLine(line2), ++i) ;
     if (i < 20 && line2) {
-      (*outputFunc)(outputStream, line, (int)(line2 - line));
+      (*outputFunc)(outputStream, line, line2 - line);
       if (!strncmp(line2, "/Encoding StandardEncoding def", 30)) {
 	line = getNextLine(line2);
       } else {
@@ -168,7 +187,7 @@ void FoFiType1::writeEncoded(const char **newEncoding,
 
     // copy everything after the encoding
     if (line) {
-      (*outputFunc)(outputStream, line, (int)(((char *)file + len) - line));
+      (*outputFunc)(outputStream, line, ((char *)file + len) - line);
     }
   }
 }
@@ -194,6 +213,7 @@ void FoFiType1::parse() {
   char buf[256];
   char c;
   int n, code, base, i, j;
+  char *tokptr;
   GBool gotMatrix;
 
   gotMatrix = gFalse;
@@ -206,7 +226,7 @@ void FoFiType1::parse() {
       strncpy(buf, line, 255);
       buf[255] = '\0';
       if ((p = strchr(buf+9, '/')) &&
-	  (p = strtok(p+1, " \t\n\r"))) {
+	  (p = strtok_r(p+1, " \t\n\r", &tokptr))) {
 	name = copyString(p);
       }
       line = getNextLine(line);
@@ -224,7 +244,8 @@ void FoFiType1::parse() {
       for (j = 0, line = getNextLine(line);
 	   j < 300 && line && (line1 = getNextLine(line));
 	   ++j, line = line1) {
-	if ((n = (int)(line1 - line)) > 255) {
+        if ((n = (int)(line1 - line)) > 255) {
+	  error(errSyntaxWarning, -1, "FoFiType1::parse a line has more than 255 characters, we don't support this");
 	  n = 255;
 	}
 	strncpy(buf, line, n);
@@ -243,7 +264,7 @@ void FoFiType1::parse() {
 	    } else {
 	      break;
 	    }
-	    for (; *p >= '0' && *p < '0' + base; ++p) {
+	    for (; *p >= '0' && *p < '0' + base && code < INT_MAX / (base + (*p - '0')); ++p) {
 	      code = code * base + (*p - '0');
 	    }
 	    for (; *p == ' ' || *p == '\t'; ++p) ;
@@ -268,8 +289,8 @@ void FoFiType1::parse() {
 	    }
 	  }
 	} else {
-	  if (strtok(buf, " \t") &&
-	      (p = strtok(NULL, " \t\n\r")) && !strcmp(p, "def")) {
+	  if (strtok_r(buf, " \t", &tokptr) &&
+	      (p = strtok_r(NULL, " \t\n\r", &tokptr)) && !strcmp(p, "def")) {
 	    break;
 	  }
 	}

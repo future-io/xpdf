@@ -2,16 +2,12 @@
 //
 // SplashGlyphBitmap.h
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
-//
 //========================================================================
 
 #ifndef SPLASHGLYPHBITMAP_H
 #define SPLASHGLYPHBITMAP_H
 
-#include <aconf.h>
-
-#include "gtypes.h"
+#include "goo/gtypes.h"
 
 //------------------------------------------------------------------------
 // SplashGlyphBitmap

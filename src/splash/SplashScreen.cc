@@ -2,11 +2,24 @@
 //
 // SplashScreen.cc
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
+//========================================================================
+
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2009 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2012 Fabio D'Urso <fabiodurso@hotmail.it>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
 //
 //========================================================================
 
-#include <aconf.h>
+#include <config.h>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma implementation
@@ -14,14 +27,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-#if HAVE_STD_SORT
 #include <algorithm>
-#endif
-#include "gmem.h"
+#include "goo/gmem.h"
+#include "goo/grandom.h"
 #include "SplashMath.h"
 #include "SplashScreen.h"
-
-//------------------------------------------------------------------------
 
 static SplashScreenParams defaultParams = {
   splashScreenDispersed,	// type
@@ -39,21 +49,12 @@ struct SplashScreenPoint {
   int dist;
 };
 
-#if HAVE_STD_SORT
 
 struct cmpDistancesFunctor {
   bool operator()(const SplashScreenPoint &p0, const SplashScreenPoint &p1) {
     return p0.dist < p1.dist;
   }
 };
-
-#else // HAVE_STD_SORT
-
-static int cmpDistances(const void *p0, const void *p1) {
-  return ((SplashScreenPoint *)p0)->dist - ((SplashScreenPoint *)p1)->dist;
-}
-
-#endif
 
 //------------------------------------------------------------------------
 // SplashScreen
@@ -65,12 +66,24 @@ static int cmpDistances(const void *p0, const void *p1) {
 // threshold matrix using recursive tesselation.  Gamma correction
 // (gamma = 1 / 1.33) is also computed here.
 SplashScreen::SplashScreen(SplashScreenParams *params) {
-  Guchar u;
-  int black, white, i;
 
   if (!params) {
     params = &defaultParams;
   }
+  
+  screenParams = params;
+  mat = NULL;
+  size = 0;
+  maxVal = 0;
+  minVal = 0;
+}
+
+void SplashScreen::createMatrix()
+{
+  Guchar u;
+  int black, white, i;
+  
+  SplashScreenParams *params = screenParams;
 
   // size must be a power of 2, and at least 2
   for (size = 2, log2Size = 1; size < params->size; size <<= 1, ++log2Size) ;
@@ -97,7 +110,7 @@ SplashScreen::SplashScreen(SplashScreenParams *params) {
     buildSCDMatrix(params->dotRadius);
     break;
   }
-
+  
   sizeM1 = size - 1;
 
   // do gamma correction and compute minVal/maxVal
@@ -107,11 +120,13 @@ SplashScreen::SplashScreen(SplashScreenParams *params) {
   if (black < 1) {
     black = 1;
   }
-  white = splashRound((SplashCoord)255.0 * params->whiteThreshold);
-  if (white > 255) {
+  int whiteAux = splashRound((SplashCoord)255.0 * params->whiteThreshold);
+  if (whiteAux > 255) {
     white = 255;
+  } else {
+    white = whiteAux;
   }
-  for (i = 0; i < size * size; ++i) {
+   for (i = 0; i < size * size; ++i) {
     u = splashRound((SplashCoord)255.0 *
 		    splashPow((SplashCoord)mat[i] / 255.0, params->gamma));
     if (u < black) {
@@ -240,9 +255,6 @@ void SplashScreen::buildSCDMatrix(int r) {
   int *region, *dist;
   int x, y, xx, yy, x0, x1, y0, y1, i, j, d, iMin, dMin, n;
 
-  //~ this should probably happen somewhere else
-  srand(123);
-
   // generate the random space-filling curve
   pts = (SplashScreenPoint *)gmallocn(size * size, sizeof(SplashScreenPoint));
   i = 0;
@@ -254,8 +266,7 @@ void SplashScreen::buildSCDMatrix(int r) {
     }
   }
   for (i = 0; i < size * size; ++i) {
-    j = i + (int)((double)(size * size - i) *
-		  (double)rand() / ((double)RAND_MAX + 1.0));
+    j = i + (int)((double)(size * size - i) * grandom_double());
     x = pts[i].x;
     y = pts[i].y;
     pts[i].x = pts[j].x;
@@ -346,11 +357,7 @@ void SplashScreen::buildSCDMatrix(int r) {
 	}
       }
     }
-#if HAVE_STD_SORT
     std::sort(pts, pts + n, cmpDistancesFunctor());
-#else
-    qsort(pts, n, sizeof(SplashScreenPoint), &cmpDistances);
-#endif
     for (j = 0; j < n; ++j) {
       // map values in [0 .. n-1] --> [255 .. 1]
       mat[(pts[j].y << log2Size) + pts[j].x] = 255 - (254 * j) / (n - 1);
@@ -365,6 +372,7 @@ void SplashScreen::buildSCDMatrix(int r) {
 }
 
 SplashScreen::SplashScreen(SplashScreen *screen) {
+  screenParams = screen->screenParams;
   size = screen->size;
   sizeM1 = screen->sizeM1;
   log2Size = screen->log2Size;

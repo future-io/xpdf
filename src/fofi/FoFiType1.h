@@ -9,13 +9,11 @@
 #ifndef FOFITYPE1_H
 #define FOFITYPE1_H
 
-#include <aconf.h>
-
 #ifdef USE_GCC_PRAGMAS
 #pragma interface
 #endif
 
-#include "gtypes.h"
+#include "goo/gtypes.h"
 #include "FoFiBase.h"
 
 //------------------------------------------------------------------------

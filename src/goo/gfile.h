@@ -8,23 +8,47 @@
 //
 //========================================================================
 
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2006 Kristian Høgsberg <krh@redhat.com>
+// Copyright (C) 2009, 2011, 2012 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2009 Kovid Goyal <kovid@kovidgoyal.net>
+// Copyright (C) 2013 Adam Reichold <adamreichold@myopera.com>
+// Copyright (C) 2013 Adrian Johnson <ajohnson@redneon.com>
+// Copyright (C) 2014 Bogdan Cristea <cristeab@gmail.com>
+// Copyright (C) 2014 Peter Breitenlohner <peb@mppmu.mpg.de>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
+//
+//========================================================================
+
 #ifndef GFILE_H
 #define GFILE_H
 
+#include "poppler-config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+extern "C" {
 #if defined(_WIN32)
 #  include <sys/stat.h>
 #  ifdef FPTEX
 #    include <win32lib.h>
 #  else
+#    ifndef NOMINMAX
+#      define NOMINMAX
+#    endif
 #    include <windows.h>
 #  endif
 #elif defined(ACORN)
 #elif defined(MACOS)
 #  include <ctime.h>
-#elif defined(ANDROID)
 #else
 #  include <unistd.h>
 #  include <sys/types.h>
@@ -47,32 +71,26 @@
 #    endif
 #  endif
 #endif
+}
 #include "gtypes.h"
 
-class GString;
+class GooString;
 
 //------------------------------------------------------------------------
 
-// Get home directory path.
-extern GString *getHomeDir();
-
 // Get current directory.
-extern GString *getCurrentDir();
+extern GooString *getCurrentDir();
 
 // Append a file name to a path string.  <path> may be an empty
 // string, denoting the current directory).  Returns <path>.
-extern GString *appendToPath(GString *path, const char *fileName);
+extern GooString *appendToPath(GooString *path, const char *fileName);
 
 // Grab the path from the front of the file name.  If there is no
 // directory component in <fileName>, returns an empty string.
-extern GString *grabPath(char *fileName);
+extern GooString *grabPath(char *fileName);
 
 // Is this an absolute path or file name?
 extern GBool isAbsolutePath(char *path);
-
-// Make this path absolute by prepending current directory (if path is
-// relative) or prepending user's directory (if path starts with '~').
-extern GString *makePathAbsolute(GString *path);
 
 // Get the modification time for <fileName>.  Returns 0 if there is an
 // error.
@@ -84,21 +102,14 @@ extern time_t getModTime(char *fileName);
 // should be done to the returned file pointer; the file may be
 // reopened later for reading, but not for writing.  The <mode> string
 // should be "w" or "wb".  Returns true on success.
-extern GBool openTempFile(GString **name, FILE **f,
-			  const char *mode, const char *ext);
+extern GBool openTempFile(GooString **name, FILE **f, const char *mode);
 
-// Create a directory.  Returns true on success.
-extern GBool createDir(char *path, int mode);
-
-// Execute <command>.  Returns true on success.
-extern GBool executeCommand(char *cmd);
-
-#ifdef _WIN32
+#ifdef WIN32
 // Convert a file name from Latin-1 to UTF-8.
-extern GString *fileNameToUTF8(char *path);
+extern GooString *fileNameToUTF8(char *path);
 
 // Convert a file name from UCS-2 to UTF-8.
-extern GString *fileNameToUTF8(wchar_t *path);
+extern GooString *fileNameToUTF8(wchar_t *path);
 #endif
 
 // Open a file.  On Windows, this converts the path from UTF-8 to
@@ -110,27 +121,41 @@ extern FILE *openFile(const char *path, const char *mode);
 // conventions.
 extern char *getLine(char *buf, int size, FILE *f);
 
-// Type used by gfseek/gftell for file offsets.  This will be 64 bits
-// on systems that support it.
-#if HAVE_FSEEKO
-typedef off_t GFileOffset;
-#define GFILEOFFSET_MAX 0x7fffffffffffffffLL
-#elif HAVE_FSEEK64
-typedef long long GFileOffset;
-#define GFILEOFFSET_MAX 0x7fffffffffffffffLL
-#elif HAVE_FSEEKI64
-typedef __int64 GFileOffset;
-#define GFILEOFFSET_MAX 0x7fffffffffffffffLL
+// Like fseek/ftell but uses platform specific variants that support large files
+extern int Gfseek(FILE *f, Goffset offset, int whence);
+extern Goffset Gftell(FILE *f);
+
+// Largest offset supported by Gfseek/Gftell
+extern Goffset GoffsetMax();
+
+//------------------------------------------------------------------------
+// GooFile
+//------------------------------------------------------------------------
+
+class GooFile
+{
+public:
+  int read(char *buf, int n, Goffset offset) const;
+  Goffset size() const;
+  
+  static GooFile *open(const GooString *fileName);
+  
+#ifdef _WIN32
+  static GooFile *open(const wchar_t *fileName);
+  
+  ~GooFile() { CloseHandle(handle); }
+  
+private:
+  GooFile(HANDLE handleA): handle(handleA) {}
+  HANDLE handle;
 #else
-typedef long GFileOffset;
-#define GFILEOFFSET_MAX LONG_MAX
-#endif
-
-// Like fseek, but uses a 64-bit file offset if available.
-extern int gfseek(FILE *f, GFileOffset offset, int whence);
-
-// Like ftell, but returns a 64-bit file offset if available.
-extern GFileOffset gftell(FILE *f);
+  ~GooFile() { close(fd); }
+    
+private:
+  GooFile(int fdA) : fd(fdA) {}
+  int fd;
+#endif // _WIN32
+};
 
 //------------------------------------------------------------------------
 // GDir and GDirEntry
@@ -141,12 +166,16 @@ public:
 
   GDirEntry(char *dirPath, char *nameA, GBool doStat);
   ~GDirEntry();
-  GString *getName() { return name; }
+  GooString *getName() { return name; }
+  GooString *getFullPath() { return fullPath; }
   GBool isDir() { return dir; }
 
 private:
+  GDirEntry(const GDirEntry &other);
+  GDirEntry& operator=(const GDirEntry &other);
 
-  GString *name;		// dir/file name
+  GooString *name;		// dir/file name
+  GooString *fullPath;
   GBool dir;			// is it a directory?
 };
 
@@ -159,15 +188,16 @@ public:
   void rewind();
 
 private:
+  GDir(const GDir &other);
+  GDir& operator=(const GDir &other);
 
-  GString *path;		// directory path
+  GooString *path;		// directory path
   GBool doStat;			// call stat() for each entry?
 #if defined(_WIN32)
-  WIN32_FIND_DATAA ffd;
+  WIN32_FIND_DATA ffd;
   HANDLE hnd;
 #elif defined(ACORN)
 #elif defined(MACOS)
-#elif defined(ANDROID)
 #else
   DIR *dir;			// the DIR structure from opendir()
 #ifdef VMS

@@ -1,48 +1,72 @@
-#' Extract text from PDF file
+#' XPDF utilities
 #'
-#' An R interface to the \code{pdftotext} utility from \code{xpdf}.
+#' Dump wrappers around xpdf command line utilites.
 #'
-#' @export
-#' @useDynLib xpdf
+#' @aliases xpdf poppler
 #' @rdname xpdf
-#' @aliases xpdf
-#' @importFrom Rcpp sourceCpp
-#' @param input pdf path or filename
-#' @param output txt path or filename
-#' @param firstpage first page to convert
-#' @param lastpage last page to convert
-#' @param layout maintain original physical layout
-#' @param table similar to \code{layout} but optimized for tables
-#' @param lineprinter use strict fixed-pitch/height layout
-#' @param raw keep strings in content stream order
-#' @param fixed assume fixed-pitch (or tabular) text
-#' @param linespacing fixed line spacing for LinePrinter mode
-#' @param clip separate clipped text
-#' @param enc output text encoding name
-#' @param eol output end-of-line convention (unix, dos, or mac)
-#' @param nopgbrk don't insert page breaks between pages
-#' @param opw owner password (for encrypted files)
-#' @param upw user password (for encrypted files)
-#' @param quiet don't print any messages or errors
-#' @param cfg configuration file to use in place of .xpdfrc
-#' @examples download.file("http://arxiv.org/pdf/1406.4806.pdf", "1406.4806.pdf")
-#' pdfinfo("1406.4806.pdf")
-#' pdftotext("1406.4806.pdf")
-pdftotext <- function(input, output = "out.txt", firstpage = 1, lastpage = 0, layout = FALSE,
-  table = FALSE, lineprinter = FALSE, raw = FALSE, fixed = 0, linespacing = 0, clip = FALSE,
-  enc = "", eol = "", nopgbrk = FALSE, opw = "", upw = "", quiet = FALSE, cfg = ""){
-  wrap_pdftotext(input, output, firstpage, lastpage, layout, table, lineprinter, raw, fixed,
-    linespacing, clip, enc, eol, nopgbrk, opw, upw, quiet, cfg)
+#' @param file path or name of the PDF file
+#' @param args additional arguments passed to the cmd util
+#' @export
+#' @examples setwd(tempdir())
+#' download.file("https://cran.r-project.org/doc/manuals/r-release/R-intro.pdf", "R-intro.pdf")
+#' pdfinfo("R-intro.pdf")
+#' pdffonts("R-intro.pdf")
+#'
+#' # convert to text
+#' pdftotext("R-intro.pdf")
+#' browseURL("R-intro.txt")
+#'
+#' # convert to html
+#' pdftohtml("R-intro.pdf")
+#' browseURL("R-intro.html")
+pdfinfo <- function(file, args = ""){
+  exec_util("pdfinfo", paste(file, args))
 }
 
-#' @export
 #' @rdname xpdf
-pdfinfo <- function(input, enc = "", opw = "", upw = "", cfg = ""){
-  wrap_pdfinfo(input, enc, opw, upw, cfg)
+#' @export
+pdftotext <- function(file, args = ""){
+  exec_util("pdftotext", paste(file, args))
 }
 
-#' @export
 #' @rdname xpdf
-xpdf_version <- function(){
-  wrap_version()
+#' @export
+pdftohtml <- function(file, args = ""){
+  exec_util("pdftohtml", paste(file, args))
+}
+
+#' @rdname xpdf
+#' @export
+pdftops <- function(file, args = ""){
+  exec_util("pdftops", paste(file, args))
+}
+
+#' @rdname xpdf
+#' @export
+pdfimages <- function(file, args = ""){
+  exec_util("pdfimages", paste(file, args))
+}
+
+#' @rdname xpdf
+#' @export
+pdffonts <- function(file, args = ""){
+  exec_util("pdffonts", paste(file, args))
+}
+
+#' @rdname xpdf
+#' @export
+pdfseparate <- function(file, args = ""){
+  exec_util("pdfseparate", paste(file, args))
+}
+
+#' @rdname xpdf
+#' @export
+pdfunite <- function(file, args = ""){
+  exec_util("pdfunite", paste(file, args))
+}
+
+exec_util <- function(name, args){
+  path <- system.file(paste0("bin/", name), package = "xpdf")
+  stopifnot(file.exists(path))
+  system2(path, args, stdout = TRUE)
 }

@@ -11,7 +11,7 @@
 #ifndef FIXEDPOINT_H
 #define FIXEDPOINT_H
 
-#include <aconf.h>
+#include "poppler-config.h"
 
 #if USE_FIXEDPOINT
 
@@ -49,35 +49,35 @@ public:
 
   FixedPoint operator =(FixedPoint x) { val = x.val; return *this; }
 
-  int operator ==(FixedPoint x) const { return val == x.val; }
-  int operator ==(double x) const { return *this == (FixedPoint)x; }
-  int operator ==(int x) const { return *this == (FixedPoint)x; }
-  int operator ==(long x) const { return *this == (FixedPoint)x; }
+  int operator ==(FixedPoint x) { return val == x.val; }
+  int operator ==(double x) { return *this == (FixedPoint)x; }
+  int operator ==(int x) { return *this == (FixedPoint)x; }
+  int operator ==(long x) { return *this == (FixedPoint)x; }
 
-  int operator !=(FixedPoint x) const { return val != x.val; }
-  int operator !=(double x) const { return *this != (FixedPoint)x; }
-  int operator !=(int x) const { return *this != (FixedPoint)x; }
-  int operator !=(long x) const { return *this != (FixedPoint)x; }
+  int operator !=(FixedPoint x) { return val != x.val; }
+  int operator !=(double x) { return *this != (FixedPoint)x; }
+  int operator !=(int x) { return *this != (FixedPoint)x; }
+  int operator !=(long x) { return *this != (FixedPoint)x; }
 
-  int operator <(FixedPoint x) const { return val < x.val; }
-  int operator <(double x) const { return *this < (FixedPoint)x; }
-  int operator <(int x) const { return *this < (FixedPoint)x; }
-  int operator <(long x) const { return *this < (FixedPoint)x; }
+  int operator <(FixedPoint x) { return val < x.val; }
+  int operator <(double x) { return *this < (FixedPoint)x; }
+  int operator <(int x) { return *this < (FixedPoint)x; }
+  int operator <(long x) { return *this < (FixedPoint)x; }
 
-  int operator <=(FixedPoint x) const { return val <= x.val; }
-  int operator <=(double x) const { return *this <= (FixedPoint)x; }
-  int operator <=(int x) const { return *this <= (FixedPoint)x; }
-  int operator <=(long x) const { return *this <= (FixedPoint)x; }
+  int operator <=(FixedPoint x) { return val <= x.val; }
+  int operator <=(double x) { return *this <= (FixedPoint)x; }
+  int operator <=(int x) { return *this <= (FixedPoint)x; }
+  int operator <=(long x) { return *this <= (FixedPoint)x; }
 
-  int operator >(FixedPoint x) const { return val > x.val; }
-  int operator >(double x) const { return *this > (FixedPoint)x; }
-  int operator >(int x) const { return *this > (FixedPoint)x; }
-  int operator >(long x) const { return *this > (FixedPoint)x; }
+  int operator >(FixedPoint x) { return val > x.val; }
+  int operator >(double x) { return *this > (FixedPoint)x; }
+  int operator >(int x) { return *this > (FixedPoint)x; }
+  int operator >(long x) { return *this > (FixedPoint)x; }
 
-  int operator >=(FixedPoint x) const { return val >= x.val; }
-  int operator >=(double x) const { return *this >= (FixedPoint)x; }
-  int operator >=(int x) const { return *this >= (FixedPoint)x; }
-  int operator >=(long x) const { return *this >= (FixedPoint)x; }
+  int operator >=(FixedPoint x) { return val >= x.val; }
+  int operator >=(double x) { return *this >= (FixedPoint)x; }
+  int operator >=(int x) { return *this >= (FixedPoint)x; }
+  int operator >=(long x) { return *this >= (FixedPoint)x; }
 
   FixedPoint operator -() { return make(-val); }
 
@@ -148,8 +148,8 @@ public:
   // Compute abs(m11*m22 - m12*m21) >= epsilon, handling the case
   // where the multiplications overflow.
   static GBool checkDet(FixedPoint m11, FixedPoint m12,
-			FixedPoint m21, FixedPoint m22,
-			FixedPoint epsilon);
+                       FixedPoint m21, FixedPoint m22,
+                       FixedPoint epsilon);
 
 private:
 
@@ -158,7 +158,7 @@ private:
   static int mul(int x, int y);
   static int div(int x, int y);
 
-  int val;		   // fixed point: (n-fixptShift).(fixptShift)
+  int val;                // fixed point: (n-fixptShift).(fixptShift)
 };
 
 #endif // USE_FIXEDPOINT

@@ -2,11 +2,28 @@
 //
 // SplashFTFont.cc
 //
-// Copyright 2003-2013 Glyph & Cog, LLC
+//========================================================================
+
+//========================================================================
+//
+// Modified under the Poppler project - http://poppler.freedesktop.org
+//
+// All changes made under the Poppler project to this file are licensed
+// under GPL version 2 or later
+//
+// Copyright (C) 2005, 2007-2011, 2014 Albert Astals Cid <aacid@kde.org>
+// Copyright (C) 2006 Kristian Høgsberg <krh@bitplanet.net>
+// Copyright (C) 2009 Petr Gajdos <pgajdos@novell.com>
+// Copyright (C) 2010 Suzuki Toshiya <mpsuzuki@hiroshima-u.ac.jp>
+// Copyright (C) 2011 Andreas Hartmetz <ahartmetz@gmail.com>
+// Copyright (C) 2012 Thomas Freitag <Thomas.Freitag@alfa.de>
+//
+// To see a description of the changes please see the Changelog file that
+// came with your tarball or type make ChangeLog if you are building from git
 //
 //========================================================================
 
-#include <aconf.h>
+#include <config.h>
 
 #if HAVE_FREETYPE_FREETYPE_H || HAVE_FREETYPE_H
 
@@ -18,11 +35,10 @@
 #include FT_OUTLINE_H
 #include FT_SIZES_H
 #include FT_GLYPH_H
-#include "gmem.h"
+#include "goo/gmem.h"
 #include "SplashMath.h"
 #include "SplashGlyphBitmap.h"
 #include "SplashPath.h"
-#include "SplashFontEngine.h"
 #include "SplashFTFontEngine.h"
 #include "SplashFTFontFile.h"
 #include "SplashFTFont.h"
@@ -42,10 +58,12 @@ static int glyphPathCubicTo(const FT_Vector *ctrl1, const FT_Vector *ctrl2,
 
 SplashFTFont::SplashFTFont(SplashFTFontFile *fontFileA, SplashCoord *matA,
 			   SplashCoord *textMatA):
-  SplashFont(fontFileA, matA, textMatA, fontFileA->engine->aa)
+  SplashFont(fontFileA, matA, textMatA, fontFileA->engine->aa), 
+  enableFreeTypeHinting(fontFileA->engine->enableFreeTypeHinting),
+  enableSlightHinting(fontFileA->engine->enableSlightHinting)
 {
   FT_Face face;
-  int size, div;
+  int div;
   int x, y;
 #if USE_FIXEDPOINT
   SplashCoord scale;
@@ -211,17 +229,45 @@ SplashFTFont::~SplashFTFont() {
 }
 
 GBool SplashFTFont::getGlyph(int c, int xFrac, int yFrac,
-			     SplashGlyphBitmap *bitmap) {
-  return SplashFont::getGlyph(c, xFrac, 0, bitmap);
+			     SplashGlyphBitmap *bitmap, int x0, int y0, SplashClip *clip, SplashClipResult *clipRes) {
+  return SplashFont::getGlyph(c, xFrac, 0, bitmap, x0, y0, clip, clipRes);
+}
+
+static FT_Int32 getFTLoadFlags(GBool type1, GBool trueType, GBool aa, GBool enableFreeTypeHinting, GBool enableSlightHinting)
+{
+  int ret = FT_LOAD_DEFAULT;
+  if (aa)
+    ret |= FT_LOAD_NO_BITMAP;
+  
+  if (enableFreeTypeHinting) {
+    if (enableSlightHinting) {
+      ret |= FT_LOAD_TARGET_LIGHT;
+    } else {
+      if (trueType) {
+	// FT2's autohinting doesn't always work very well (especially with
+	// font subsets), so turn it off if anti-aliasing is enabled; if
+	// anti-aliasing is disabled, this seems to be a tossup - some fonts
+	// look better with hinting, some without, so leave hinting on
+	if (aa) {
+	  ret |= FT_LOAD_NO_AUTOHINT;
+	}
+      } else if (type1) {
+	// Type 1 fonts seem to look better with 'light' hinting mode
+	ret |= FT_LOAD_TARGET_LIGHT;
+      }
+    }
+  } else {
+    ret |= FT_LOAD_NO_HINTING;
+  }
+  return ret;
 }
 
 GBool SplashFTFont::makeGlyph(int c, int xFrac, int yFrac,
-			      SplashGlyphBitmap *bitmap) {
+			      SplashGlyphBitmap *bitmap, int x0, int y0, SplashClip *clip, SplashClipResult *clipRes) {
   SplashFTFontFile *ff;
   FT_Vector offset;
   FT_GlyphSlot slot;
   FT_UInt gid;
-  FT_Int32 flags;
   int rowSize;
   Guchar *p, *q;
   int i;
@@ -234,42 +280,39 @@ GBool SplashFTFont::makeGlyph(int c, int xFrac, int yFrac,
   FT_Set_Transform(ff->face, &matrix, &offset);
   slot = ff->face->glyph;
 
-  if (ff->codeToGID && c < ff->codeToGIDLen) {
+  if (ff->codeToGID && c < ff->codeToGIDLen && c >= 0) {
     gid = (FT_UInt)ff->codeToGID[c];
   } else {
     gid = (FT_UInt)c;
   }
-  if (ff->trueType && gid < 0) {
-    // skip the TrueType notdef glyph
+
+  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(ff->type1, ff->trueType, aa, enableFreeTypeHinting, enableSlightHinting))) {
     return gFalse;
   }
 
-  // Set up the load flags:
-  // * disable bitmaps because they look ugly when scaled, rotated,
-  //   etc.
-  // * disable autohinting because it can fail badly with font subsets
-  //   that use invalid glyph names (the FreeType autohinter depends
-  //   on the glyph name to figure out how to autohint the glyph)
-  // * but enable light autohinting for Type 1 fonts because regular
-  //   hinting looks pretty bad, and the invalid glyph name issue
-  //   seems to be very rare (Type 1 fonts are mostly used for
-  //   substitution, in which case the full font is being used, which
-  //   means we have the glyph names)
-  flags = FT_LOAD_NO_BITMAP;
-  if (ff->engine->flags & splashFTNoHinting) {
-    flags |= FT_LOAD_NO_HINTING;
-  } else if (ff->useLightHinting) {
-    flags |= FT_LOAD_TARGET_LIGHT;
-  } else {
-    flags |= FT_LOAD_NO_AUTOHINT;
+  // prelimirary values based on FT_Outline_Get_CBox
+  // we add two pixels to each side to be in the safe side
+  FT_BBox cbox;
+  FT_Outline_Get_CBox(&ff->face->glyph->outline, &cbox);
+  bitmap->x = -(cbox.xMin / 64) + 2;
+  bitmap->y =  (cbox.yMax / 64) + 2;
+  bitmap->w = ((cbox.xMax - cbox.xMin) / 64) + 4;
+  bitmap->h = ((cbox.yMax - cbox.yMin) / 64) + 4;
+
+  *clipRes = clip->testRect(x0 - bitmap->x,
+                            y0 - bitmap->y,
+                            x0 - bitmap->x + bitmap->w,
+                            y0 - bitmap->y + bitmap->h);
+  if (*clipRes == splashClipAllOutside) {
+    bitmap->freeData = gFalse;
+    return gTrue;
   }
-  if (FT_Load_Glyph(ff->face, gid, flags)) {
+
+  if (FT_Render_Glyph(slot, aa ? ft_render_mode_normal
+		               : ft_render_mode_mono)) {
     return gFalse;
   }
-  if (FT_Render_Glyph(slot, aa ? FT_RENDER_MODE_NORMAL
-		               : FT_RENDER_MODE_MONO)) {
-    return gFalse;
-  }
+
   if (slot->bitmap.width == 0 || slot->bitmap.rows == 0) {
     // this can happen if (a) the glyph is really tiny or (b) the
     // metrics in the TrueType file are broken
@@ -286,7 +329,10 @@ GBool SplashFTFont::makeGlyph(int c, int xFrac, int yFrac,
   } else {
     rowSize = (bitmap->w + 7) >> 3;
   }
-  bitmap->data = (Guchar *)gmallocn(bitmap->h, rowSize);
+  bitmap->data = (Guchar *)gmallocn_checkoverflow(rowSize, bitmap->h);
+  if (!bitmap->data) {
+    return gFalse;
+  }
   bitmap->freeData = gTrue;
   for (i = 0, p = bitmap->data, q = slot->bitmap.buffer;
        i < bitmap->h;
@@ -295,6 +341,42 @@ GBool SplashFTFont::makeGlyph(int c, int xFrac, int yFrac,
   }
 
   return gTrue;
+}
+
+double SplashFTFont::getGlyphAdvance(int c)
+{
+  SplashFTFontFile *ff;
+  FT_Vector offset;
+  FT_UInt gid;
+  FT_Matrix identityMatrix;
+
+  ff = (SplashFTFontFile *)fontFile;
+
+  // init the matrix
+  identityMatrix.xx = 65536; // 1 in 16.16 format
+  identityMatrix.xy = 0;
+  identityMatrix.yx = 0;
+  identityMatrix.yy = 65536; // 1 in 16.16 format
+
+  // init the offset
+  offset.x = 0;
+  offset.y = 0;
+
+  ff->face->size = sizeObj;
+  FT_Set_Transform(ff->face, &identityMatrix, &offset);
+
+  if (ff->codeToGID && c < ff->codeToGIDLen) {
+    gid = (FT_UInt)ff->codeToGID[c];
+  } else {
+    gid = (FT_UInt)c;
+  }
+
+  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(ff->type1, ff->trueType, aa, enableFreeTypeHinting, enableSlightHinting))) {
+    return -1;
+  }
+
+  // 64.0 is 1 in 26.6 format
+  return ff->face->glyph->metrics.horiAdvance / 64.0 / size;
 }
 
 struct SplashFTFontPath {
@@ -328,19 +410,18 @@ SplashPath *SplashFTFont::getGlyphPath(int c) {
   ff->face->size = sizeObj;
   FT_Set_Transform(ff->face, &textMatrix, NULL);
   slot = ff->face->glyph;
-  if (ff->codeToGID && c < ff->codeToGIDLen) {
+  if (ff->codeToGID && c < ff->codeToGIDLen && c >= 0) {
     gid = ff->codeToGID[c];
   } else {
     gid = (FT_UInt)c;
   }
-  if (ff->trueType && gid < 0) {
-    // skip the TrueType notdef glyph
-    return NULL;
-  }
-  if (FT_Load_Glyph(ff->face, gid, FT_LOAD_NO_BITMAP)) {
+  if (FT_Load_Glyph(ff->face, gid, getFTLoadFlags(ff->type1, ff->trueType, aa, enableFreeTypeHinting, enableSlightHinting))) {
     return NULL;
   }
   if (FT_Get_Glyph(slot, &glyph)) {
+    return NULL;
+  }
+  if (FT_Outline_Check(&((FT_OutlineGlyph)glyph)->outline)) {
     return NULL;
   }
   path.path = new SplashPath();
