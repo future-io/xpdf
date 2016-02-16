@@ -117,9 +117,7 @@
 
 /* Have FreeType2 include files */
 #ifndef HAVE_FREETYPE_H
-#ifndef _WIN32
-#define HAVE_FREETYPE_H 1
-#endif
+/* #undef HAVE_FREETYPE_H */
 #endif
 
 /* Defines if use cms */

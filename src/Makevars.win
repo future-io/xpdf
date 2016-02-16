@@ -1,0 +1,2 @@
+include Makevars.in
+PKG_CPPFLAGS+=-Iwin32

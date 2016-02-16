@@ -20,53 +20,54 @@
 #' pdftohtml("R-intro.pdf")
 #' browseURL("R-intro.html")
 pdfinfo <- function(file, args = ""){
-  exec_util("pdfinfo", paste(file, args))
+  exec_util("pdfinfo", paste(normalizePath(file), args))
 }
 
 #' @rdname xpdf
 #' @export
 pdftotext <- function(file, args = ""){
-  exec_util("pdftotext", paste(file, args))
+  exec_util("pdftotext", paste(normalizePath(file), args))
 }
 
 #' @rdname xpdf
 #' @export
 pdftohtml <- function(file, args = ""){
-  exec_util("pdftohtml", paste(file, args))
+  exec_util("pdftohtml", paste(normalizePath(file), args))
 }
 
 #' @rdname xpdf
 #' @export
 pdftops <- function(file, args = ""){
-  exec_util("pdftops", paste(file, args))
+  exec_util("pdftops", paste(normalizePath(file), args))
 }
 
 #' @rdname xpdf
 #' @export
 pdfimages <- function(file, args = ""){
-  exec_util("pdfimages", paste(file, args))
+  exec_util("pdfimages", paste(normalizePath(file), args))
 }
 
 #' @rdname xpdf
 #' @export
 pdffonts <- function(file, args = ""){
-  exec_util("pdffonts", paste(file, args))
+  exec_util("pdffonts", paste(normalizePath(file), args))
 }
 
 #' @rdname xpdf
 #' @export
 pdfseparate <- function(file, args = ""){
-  exec_util("pdfseparate", paste(file, args))
+  exec_util("pdfseparate", paste(normalizePath(file), args))
 }
 
 #' @rdname xpdf
 #' @export
 pdfunite <- function(file, args = ""){
-  exec_util("pdfunite", paste(file, args))
+  exec_util("pdfunite", paste(normalizePath(file), args))
 }
 
 exec_util <- function(name, args){
-  path <- system.file(paste0("bin/", name), package = "xpdf")
+  postfix <- ifelse(identical(.Platform$OS.type, "windows"), ".exe", "")
+  path <- system.file(paste0("bin/", name, postfix), package = "xpdf")
   stopifnot(file.exists(path))
   system2(path, args, stdout = TRUE)
 }
